@@ -1,0 +1,12 @@
+# fastwht folder
+lib/fastwht/
+
+# ds_store
+**/.DS_Store
+
+# notebooks
+lib/sandbox
+
+__pycache__
+
+data
