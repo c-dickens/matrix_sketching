@@ -5,7 +5,7 @@ The initial problem is to investigate how different random transforms can be use
 
 
 ## Roadmap:
-1. Get IHS LASSO solver working.
+1. ~~Get IHS LASSO solver working.~~ [26/07/2018] DONE - now incorporate into class based method.
 2. Get IHS SVM solver working.
 
 ### Credits
