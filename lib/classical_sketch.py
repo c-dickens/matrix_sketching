@@ -66,7 +66,8 @@ class ClassicalSketch(CountSketch, SRHT, GaussianSketch):
         sketch_function = self.sketch_function[self.sketch_type]
         data_targets = np.c_[self.data, self.targets]
         summary = sketch_function(data_targets, self.sketch_dimension)
-        data_target_sketch = summary.sketch(data_targets)
+        #data_target_sketch = summary.sketch(data_targets)
+        data_target_sketch = summary.sketch()
         sketched_data = data_target_sketch[:,:-1]
         sketched_targets = data_target_sketch[:,-1]
         return sketched_data, sketched_targets

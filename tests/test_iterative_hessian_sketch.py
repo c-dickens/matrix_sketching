@@ -3,6 +3,9 @@ import pandas as pd
 from timeit import default_timer
 from scipy import optimize
 from sklearn.datasets import make_regression
+from sklearn.linear_model import Lasso
+from sklearn.preprocessing import StandardScaler
+import quadprog as qp
 import scipy.optimize
 import unittest
 import sys
@@ -26,9 +29,39 @@ print("Shape of data: {}".format(rawdata_mat.shape))
 print("Shape of testing data: {}".format(X.shape))
 print("Shape of test vector: {}".format(y.shape))
 
+
+
 ########## LASSO SCIPY FUNCTION ############
-def lasso(x, A, b):
-    return 0.5*np.linalg.norm(A@x - b)**2 #+ _lambda*np.sum(np.abs(x))
+### QP approaches
+def qp_lasso(data, targets, regulariser):
+    d = data.shape[1]
+    Q = data.T@data
+    big_hessian = np.vstack((np.c_[Q, -Q], np.c_[-Q,Q])) + 1E-10*np.eye(2*d)
+    big_linear_term = np.hstack((-targets.T@data, targets.T@data))
+
+    I_d = np.eye(d)
+    constraint_matrix = np.vstack((np.eye(2*d), np.c_[I_d, I_d]))
+    constraint_vals = np.zeros((3*d))
+    constraint_vals[:d] = regulariser
+    result = qp.solve_qp(big_hessian, big_linear_term, -constraint_matrix.T, constraint_vals)
+
+    return result
+
+
+def generate_lasso_data(m, n, sigma=5, density=0.2):
+    "Generates data matrix X and observations Y."
+    np.random.seed(1)
+    beta_star = np.random.randn(n)
+    idxs = np.random.choice(range(n), int((1-density)*n), replace=False)
+    for idx in idxs:
+        beta_star[idx] = 0
+    X = np.random.randn(m,n)
+    Y = X.dot(beta_star) + np.random.normal(0, sigma, size=m)
+    scaler = StandardScaler().fit(X)
+    new_X = scaler.transform(X)
+    #scale_y = Normalizer().fit(Y)
+    #new_y = scaler.transform(Y)
+    return new_X, Y, beta_star
 
 
 class TestSketch(unittest.TestCase):
@@ -41,6 +74,7 @@ class TestSketch(unittest.TestCase):
 
 
         for sketch_method in sketch_names:
+            print("Testing {}".format(sketch_method))
             summary = IHS(data=X, targets=y, sketch_dimension=sketch_size,
                                                     sketch_type=sketch_method,
                                                     number_iterations=num_iters,
@@ -72,7 +106,7 @@ class TestSketch(unittest.TestCase):
         '''Show that a random regression instance is approximated by the
         hessian sketching scheme'''
 
-        print("TESTING UNCONSTRINAED ITERATIVE HESSIAN SKETCH ALGORITHM")
+        print("TESTING UNCONSTRAINED ITERATIVE HESSIAN SKETCH ALGORITHM")
         sketch_size = 500
         num_iters = 10
         # Setup
@@ -105,57 +139,48 @@ class TestSketch(unittest.TestCase):
         hessian sketching scheme'''
         print(80*"-")
         print("TESTING LASSO ITERATIVE HESSIAN SKETCH ALGORITHM")
-        sketch_size = 5000
-        num_iters = 1
 
-        lasso_bound = 50.0
+        ncols = 250
+        nrows = 10000
+        sketch_size = 1000
+        sklearn_lasso_bound = 1000
+        X, y, coef = generate_lasso_data(nrows, ncols, sigma=10, density=0.5)
+        trials = 5
 
-        #  For the quadprog solver we use.
-        constraints = {'type' : 'lasso',
-                       'bound' : lasso_bound}
+        ### Test Sklearn implementation
+        clf = Lasso(sklearn_lasso_bound)
+        x_opt = clf.fit((X.shape[0])*X,(X.shape[0])*y).coef_
+        print("Potential norm bound for ihs: {}".format(np.linalg.norm(x_opt,1)))
+        ihs_lasso_bound = np.linalg.norm(x_opt,1) + 1E-5
+        ### Test QP formulation with quadprog
+        result = qp_lasso(X, y, ihs_lasso_bound)
+        x = result[0]
+        x_qp = -1.0*(x[ncols:] - x[:ncols])
+        #print("x opt ",x_opt)
+        #print("QP x", -1.0*x_qp)
+        np.testing.assert_almost_equal(np.linalg.norm(x_opt,1), np.linalg.norm(x_qp,1), decimal=1)
+        print("QP SOLVER AND SKLEARN HAVE CORRESPONDING SOLUTIONS")
 
 
-        # For scipy solver to check quadprog output
-        cons = ({'type' : 'ineq',
-                 #'fun'  : lambda x: np.sum(np.abs(x)) <= lasso_bound}) need differentiable constraints
-                 'fun' : lambda x : lasso_bound - np.sum(x)**2})
-        # Setup
-        syn_data,syn_targets,coef = make_regression(n_samples = 5000, n_features = 2, coef=True)
-        syn_data = syn_data.astype(np.float32)
-        syn_targets = syn_targets.astype(np.float32)
-
-        # Scipy Lasso solver
-        print("Entering scipy solver")
-        # scipy_result = optimize.minimize(lasso,np.zeros(syn_data.shape[1]),
-        #                                 args = (syn_data,syn_targets, lasso_bound),
-        #                                 method='SLSQP')
-        scipy_result = optimize.minimize(lasso,np.zeros(syn_data.shape[1],dtype=np.float32),
-                                         args=(syn_data,syn_targets),
-                                         constraints=cons)
-        print("scipy optimisation complete.")
-        optimal_weights = scipy_result['x']
-        print("Optimal x {}".format(optimal_weights))
-        print("Entering IHS algorithm.")
         for sketch_method in sketch_names:
-            iterative_hessian = IHS(data=syn_data, targets=syn_targets, sketch_dimension=sketch_size,
+            ihs_lasso = IHS(data=X, targets=y, sketch_dimension=sketch_size,
                                                     sketch_type=sketch_method,
-                                                    number_iterations=num_iters,
+                                                    number_iterations=20,
                                                     random_state=random_seed)
-            print("STARTING IHS ALGORITHM WITH {}".format(sketch_method))
+            print("STARTING IHS-LASSO ALGORITHM WITH {}".format(sketch_method), 60*"*")
             #start = default_timer()
-            x_approx = iterative_hessian.solve(constraints)
-            #ihs_time = default_timer() - start
-            #print("Alg took: {}s".format(ihs_time))
-            print("DONE IHS ALG WITH {}".format(sketch_method))
-            #print("x shape: {}".format(x_approx.shape))
-            #print("data shape: {}".format(syn_data.shape))
-            #print("Weights shape: {}".format(optimal_weights.shape))
-            print("Sketch: {}".format(sketch_method))
-            print("Approx. weights: {}".format(x_approx))
-            #print("Optimal weights: {}".format(optimal_weights))
-            #print("||x^* - x'||_A^2: {}".format((np.linalg.norm(syn_data@(x_approx - optimal_weights)**2/syn_data.shape[0]))))
-            #p.testing.assert_allclose(x_approx, optimal_weights)
-        print("COMPLETED LASSO ITERATIVE HESSIAN SKETCH ALGORITHM")
+            x_ihs = ihs_lasso.solve({'problem' : "lasso", 'bound' : ihs_lasso_bound})
+            print("Comparing difference between opt and approx:")
+            #print(np.linalg.norm(x_opt - x_ihs))
+            print("||x^* - x'||_A^2: {}".format((np.linalg.norm(X@(x_opt - x_ihs)**2/X.shape[0]))))
+
+            # test that the constrain bound is met
+            self.assertTrue(np.linalg.norm(x_ihs,1) - ihs_lasso_bound < 0.01)
+
+            # Test convergence
+            np.testing.assert_array_almost_equal(x_opt, x_ihs, decimal=4)
+            print("SOLUTION IS CORRECT")
+
 
 
 if __name__ == "__main__":

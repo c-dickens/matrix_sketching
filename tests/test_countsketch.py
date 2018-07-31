@@ -47,9 +47,9 @@ class TestSketch(unittest.TestCase):
         mean_time = 0
         repeats = 100
         for i in range(repeats):
-            summary = CountSketch(X,X.shape[0], X.shape[1], sketch_dimension=sketch_size)
+            summary = CountSketch(X, sketch_dimension=sketch_size)
             start = default_timer()
-            sketch = summary.sketch(X_rows, X_cols, X_data)
+            sketch = summary.sketch(X)
             mean_time += default_timer() - start
         print("Mean summary time on ({},{},{}): {}".format(subset_size, X.shape[1], sketch_size,mean_time/repeats))
 
@@ -59,33 +59,33 @@ class TestSketch(unittest.TestCase):
         # Check dimensionality
         print("Checking dimensions with no extra arguments")
         # No extra arguments
-        summary = CountSketch(X,X.shape[0], X.shape[1], sketch_dimension=sketch_size)
+        summary = CountSketch(X, sketch_dimension=sketch_size)
 
-        sketch = summary.sketch(X_rows, X_cols, X_data)
+        sketch = summary.sketch(X)
         self.assertEqual(sketch.shape[1], X.shape[1]) # columns preserved
         self.assertEqual(sketch.shape[0],sketch_size) # rows are sketch size
         print("Passed")
 
         # random states added
         print("Checking with random state")
-        summary = CountSketch(X,X.shape[0], X.shape[1], sketch_dimension=sketch_size,random_state=random_seed)
-        sketch = summary.sketch(X_rows, X_cols, X_data)
+        summary = CountSketch(X, sketch_dimension=sketch_size,random_state=random_seed)
+        sketch = summary.sketch(X)
         self.assertEqual(sketch.shape[1], X.shape[1]) # columns preserved
         self.assertEqual(sketch.shape[0],sketch_size) # rows are sketch size
         print("Passed")
 
         # Only second_data
         print("Checking with second_data")
-        summary = CountSketch(X,X.shape[0], X.shape[1], sketch_dimension=sketch_size,second_data=np.ones_like(X))
-        sketch = summary.sketch(X_rows, X_cols, X_data)
+        summary = CountSketch(X, sketch_dimension=sketch_size,second_data=np.ones_like(X))
+        sketch = summary.sketch(X)
         self.assertEqual(sketch.shape[1], X.shape[1]) # columns preserved
         self.assertEqual(sketch.shape[0],sketch_size) # rows are sketch size
         print("Passed")
     #
         # Check with both random_state and second_data
         print("Checking with both arguments")
-        summary = CountSketch(X,X.shape[0], X.shape[1], sketch_dimension=sketch_size,random_state=random_seed, second_data=np.ones_like(X))
-        sketch = summary.sketch(X_rows, X_cols, X_data)
+        summary = CountSketch(X, sketch_dimension=sketch_size,random_state=random_seed, second_data=np.ones_like(X))
+        sketch = summary.sketch(X)
         self.assertEqual(sketch.shape[1], X.shape[1]) # columns preserved
         self.assertEqual(sketch.shape[0],sketch_size) # rows are sketch size
         print("Passed")
@@ -105,20 +105,20 @@ class TestSketch(unittest.TestCase):
         error1, error2, error3 = 0,0,0
 
         for trial in range(num_trials):
-            summary = CountSketch(X,X.shape[0], X.shape[1], sketch_dimension=sketch_size_1)
-            sketch = summary.sketch(X_rows, X_cols, X_data)
+            summary = CountSketch(X, sketch_dimension=sketch_size_1)
+            sketch = summary.sketch(X)
             error1 += np.linalg.norm(covariance_matrix - sketch.T@sketch, ord='fro') / covariance_matrix_norm
         error1 /= num_trials
 
         for trial in range(num_trials):
-            summary = CountSketch(X,X.shape[0], X.shape[1], sketch_dimension=sketch_size_2)
-            sketch = summary.sketch(X_rows, X_cols, X_data)
+            summary = CountSketch(X, sketch_dimension=sketch_size_2)
+            sketch = summary.sketch(X)
             error2 += np.linalg.norm(covariance_matrix - sketch.T@sketch, ord='fro') / covariance_matrix_norm
         error2 /= num_trials
 
         for trial in range(num_trials):
-            summary = CountSketch(X,X.shape[0], X.shape[1], sketch_dimension=sketch_size_3)
-            sketch = summary.sketch(X_rows, X_cols, X_data)
+            summary = CountSketch(X, sketch_dimension=sketch_size_3)
+            sketch = summary.sketch(X)
             error3 += np.linalg.norm(covariance_matrix - sketch.T@sketch, ord='fro') / covariance_matrix_norm
         error3 /= num_trials
 

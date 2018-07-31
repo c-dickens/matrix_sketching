@@ -8,6 +8,7 @@ import numpy as np
 import numba
 from numba import jit
 from . import Sketch
+from scipy.sparse import coo_matrix
 
 @jit(nopython=True)
 def _countSketch(data, sketch_dimension):
@@ -41,6 +42,29 @@ def countSketch_memory(data, sketch_dimension):
 
     return sketch
 
+@jit('float64[:,:](int32[:],int32[:],float64[:],int64,int64,int64)',nopython=True)
+def _countSketch_fast(nonzero_rows, nonzero_cols, nonzero_data, n, d, sketch_dimension):
+    '''Perform count sketch on preprocessed data'''
+    sketch = np.zeros((sketch_dimension, d))
+    hashedIndices = np.random.choice(sketch_dimension, n, replace=True)
+    randSigns = np.random.choice(2, n, replace=True) * 2 - 1
+    nnz_id = 0
+    old_row = 0
+    bucket, sign = hashedIndices[0], randSigns[0]
+
+    for row_id in nonzero_rows:
+        col_id = nonzero_cols[nnz_id]
+        data_val = nonzero_data[nnz_id]
+        if row_id == old_row:
+            sketch[bucket, col_id] += sign*data_val
+        else:
+            bucket = hashedIndices[row_id]
+            sign = randSigns[row_id]
+            sketch[bucket, col_id] += sign*data_val
+            old_row = row_id
+        nnz_id += 1
+    return sketch
+
 class CountSketch(Sketch):
     '''Reduces dimensionality by using a CountSketch random projection in the
     streaming model.
@@ -61,8 +85,15 @@ class CountSketch(Sketch):
         else:
             super(CountSketch,self).__init__(data, sketch_dimension)
 
+        self.n, self.d = data.shape
+        X_coo = coo_matrix(self.data)
+        self.nonzero_rows = X_coo.row
+        self.nonzero_cols = X_coo.col
+        self.nonzero_data = X_coo.data
+
     def sketch(self, data):
-        summary = _countSketch(data, self.sketch_dimension)
+        '''data argument superfluous but indicates that sketching is done on X'''
+        summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
         return summary
 
     def sketch_memory(self,data):

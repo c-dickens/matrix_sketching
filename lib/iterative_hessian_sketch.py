@@ -3,74 +3,36 @@ Class implementation of the iterative hessian sketch
 '''
 import numpy as np
 from scipy.optimize import minimize
+from scipy.sparse import coo_matrix
 from . import Sketch, CountSketch, SRHT
-#import quadprog
-#import cvxopt as cvx
+import quadprog as qp
 from timeit import default_timer
 
 
-############################## HELPER FUNCTIONS ###############################
-# def lasso_solver(hessian, q, ell_1_bound):
-#     '''helper function to wrap the lasso solver with constraints in matrix
-#     form.
-#
-#     Inputs:
-#         - hessian: d x d numpy array
-#         - q: inner_product term
-#         - ell_1_bound: float to bound the solution ||x||_1 <= ell_1_bound
-#
-#     Output:
-#         - z: arg-minimiser of the LASSO problem
-#
-#     Problem form:
-#     min 0.5*||Ax - b||_2^2 s.t ||x||_1 <= t
-#
-#     Larger Hessian:
-#     Q = ( H   - H )
-#         (- H    H )
-#
-#     Larger inner product term:
-#     c = ( q)
-#         (-q)
-#
-#     Constraints:
-#     (I_d  I_d)  <=  (s_d)
-#     (  I_2d  )  <=  (0_2d)
-#
-#     QP solver quadprog requires 0.5*x.T*Q*x - c.T*x
-#     subject to: C.Tx >= b
-#
-#     Setup taken from
-#     https://stats.stackexchange.com/questions/119795/quadratic-programming-and-lasso
-#     '''
-#     # print("Entering LASSO solver")
-#     # print("inner prod shape {}".format(q.shape))
-#     d = hessian.shape[0]
-#     # Larger Hessian matrix
-#     Q = np.vstack((np.hstack((hessian, -hessian)),np.hstack((-hessian, hessian)))) + 1E-10*np.identity(2*d)
-#
-#     # Larger inner product
-#     c = np.hstack((q, -1.0*q))
-#     # Constraints
-#     constraints = np.hstack((np.identity(d), np.identity(d) ))
-#     constraints = np.vstack((constraints, -1.0*np.identity(2*d)))
-#
-#     # Bounds
-#     b = np.zeros((3*d))
-#
-#     # mutliply bny -1.0 to fix the less than from setup
-#     # link to the greater than for the implementation.
-#     b[:d] = -1.0*ell_1_bound
-#     constraints *= -1.0
-#
-#     # print("New hessian shape: {}".format(Q.shape))
-#     # print("Inner prod shape: {}".format(c.shape))
-#     # print("Cosntraints shape: {}".format(constraints.shape))
-#     # print("Bound shape: {}".format(b.shape))
-#
-#     # constraints.T as the QP solver does internal transpose.
-#     result = quadprog.solve_qp(Q, c , constraints.T, b)
-#     return result
+
+############################## SOLVER FUNCTIONS ###############################
+def lasso(A,x,b,regulariser):
+    return np.linalg.norm(A@x-b)**2 - regulariser*np.linalg.norm(x,1)
+
+
+def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x):
+    '''Solve the iterative version of lasso.  QP constrants adapted from
+    https://stats.stackexchange.com/questions/119795/quadratic-programming-and-lasso
+    '''
+    d = data.shape[1]
+    Q = data.T@data
+    big_hessian = np.vstack((np.c_[Q, -Q], np.c_[-Q,Q])) + 1E-10*np.eye(2*d)
+    linear_term = ATy - data.T@(data@old_x)
+    big_linear_term = np.hstack((-linear_term, linear_term))
+
+    I_d = np.eye(d)
+    constraint_matrix = np.vstack((np.eye(2*d), np.c_[I_d, I_d]))
+    constraint_vals = np.zeros((3*d))
+    constraint_vals[:d] = regulariser
+
+    result = qp.solve_qp(big_hessian, big_linear_term, -constraint_matrix.T, constraint_vals)
+    #print(result)
+    return result
 
 
 
@@ -105,15 +67,21 @@ class IHS(CountSketch, SRHT):
         '''
         self.data = data
         self.targets = targets
+        self.n, self.d = data.shape
         self.sketch_type = sketch_type
         self.number_iterations = number_iterations
         self.data_shape = data.shape
         self.sketch_function = {"CountSketch" : CountSketch,
                                 "SRHT"        : SRHT}
+        X_coo = coo_matrix(self.data)
+        self.nonzero_rows = X_coo.row
+        self.nonzero_cols = X_coo.col
+        self.nonzero_data = X_coo.data
         if self.sketch_type == "CountSketch":
             if random_state is not None:
                 super(CountSketch,self).__init__(data, sketch_dimension,\
                                                             random_state)
+
             else:
                 super(CountSketch,self).__init__(data, sketch_dimension)
 
@@ -133,7 +101,7 @@ class IHS(CountSketch, SRHT):
         FUTURE WORK
         -----------
         1. CAN THIS BE DONE IN PARALLEL TO SAVE REPEATEDLY LOOPING OVER THE DATA?
-        2. CAN WE REPLICATE THIS WITH A TIMING ARGUMENT TO SEE HOW LONG THE
+        2. CAN WE REPLICATE THIS WITH A TIMING PARAMETER TO SEE HOW LONG THE
         AVERAGE SUMAMRY TIME IS?
         '''
 
@@ -147,9 +115,13 @@ class IHS(CountSketch, SRHT):
 
         if self.random_state is not None:
             for iter_num in range(self.number_iterations):
-                #print("")
-                #print("Iteration {}".format(iter_num))
+                #print("Testing sketch function {}".format(self.sketch_type))
+
                 summary = sketch_function(self.data, self.sketch_dimension)
+
+                # if self.sketch_type == "CountSketch":
+                #     all_sketches[:,:,iter_num] = summary.sketch()
+                # else:
                 all_sketches[:,:,iter_num] = summary.sketch(self.data)
             return all_sketches
         else:
@@ -157,48 +129,116 @@ class IHS(CountSketch, SRHT):
                 #print("")
                 #print("Iteration {}".format(iter_num))
                 summary = sketch_function(self.data, self.sketch_dimension,self.random_state)
+                # if self.sketch_type == "CountSketch":
+                #     all_sketches[:,:,iter_num] = summary.sketch()
+                # else:
                 all_sketches[:,:,iter_num] = summary.sketch(self.data)
             return all_sketches
 
-    # def solve(self, constraints=None):
-    #     '''constraints is a dictionary of constraints to pass to the scipy solver
-    #     constraint dict must be of the form:
-    #         constraints = {'type' : 'lasso',
-    #                        'bound' : t}
-    #     where t is an np.float
-    #     '''
-    #
-    #     # Setup
-    #     ATy = np.ravel(self.data.T@self.targets)
-    #     #covariance_matrix = self.data.T@self.data
-    #     summaries = self.generate_summaries()
-    #     x0 = np.zeros(shape=(self.data.shape[1]))
-    #
-    #
-    #     if constraints is None:
-    #         for iter_num in range(self.number_iterations):
-    #             sketch = summaries[:,:, iter_num]
-    #             approx_hessian = sketch.T@sketch
-    #             inner_product = self.data.T@(self.targets - self.data@x0)
-    #
-    #             QP_sol = quadprog.solve_qp(approx_hessian,inner_product)
-    #             print("Iteration: {}".format(iter_num))
-    #             x0 += QP_sol[0]
-    #     elif constraints['type'] == 'lasso':
-    #         lasso_bound = constraints['bound']
-    #         print("Lasso bound: {}".format(lasso_bound))
-    #         for iter_num in range(self.number_iterations):
-    #             sketch = summaries[:,:, iter_num]
-    #             approx_hessian = sketch.T@sketch
-    #             inner_product = self.data.T@(self.targets - self.data@x0)
-    #             QP_sol = lasso_solver(approx_hessian, inner_product, lasso_bound)
-    #             print(QP_sol)
-    #
-    #             QP_out = QP_sol[0]
-    #             #print(QP_out)
-    #             #print(QP_out[:self.data.shape[1]])
-    #             #print(QP_out[self.data.shape[1]:])
-    #             x_out = QP_out[:self.data.shape[1]] - QP_out[self.data.shape[1]:]
-    #             #print("x_out: {}".format(x_out))
-    #             x0 = x_out
-    #     return x0
+    def solve(self, constraints=None, timing=False):
+        '''constraints is a dictionary of constraints to pass to the scipy solver
+        constraint dict must be of the form:
+            constraints = {'problem' : 'lasso',
+                           'bound' : t}
+        where t is an np.float
+
+        timing - bool - False don't return timings, if true then do
+        '''
+
+        # Setup
+        ATy = np.ravel(self.data.T@self.targets)
+        #covariance_matrix = self.data.T@self.data
+        summaries = self.generate_summaries()
+        x0 = np.zeros(shape=(self.data.shape[1]))
+        norm_diff = 1.0
+        old_norm = 1.0
+
+        if constraints is None:
+            for iter_num in range(self.number_iterations):
+                #if norm_diff > 1E-5:
+                #print("Entering if part")
+                sketch = summaries[:,:, iter_num]
+                approx_hessian = sketch.T@sketch
+                inner_product = self.data.T@(self.targets - self.data@x0)
+
+                QP_sol = qp.solve_qp(approx_hessian,inner_product)
+                print("Iteration: {}".format(iter_num))
+                x_new = QP_sol[0]
+
+
+                # Fractional decrease per iteration check
+                #norm_diff = np.linalg.norm(self.data@(x_new - x0))**2/old_norm
+                #print(norm_diff)
+                x0 += x_new
+                #old_norm = np.linalg.norm(self.data@(x0))**2
+            # else:
+            #     #print("Break")
+            #     break
+            return x0
+
+        elif constraints['problem'] == 'lasso':
+            lasso_bound = constraints['bound']
+            print("Lasso bound: {}".format(lasso_bound))
+
+            setup_time_start = default_timer()
+            A = self.data
+            y = self.targets
+            x0 = np.zeros(shape=(self.d,))
+            m = int(self.sketch_dimension)
+            ATy = A.T@y
+            setup_time = default_timer() - setup_time_start
+
+
+            old_norm = 1.0
+            norm_diff = 1.0
+            approx_norm_sum = 0
+            old_obj_val = lasso(A,x0,y,lasso_bound)
+            # measurable timing vars
+            opt_time = 0
+            # sketch_time = 0 unnecessary as will come from the previous sketch call
+
+
+
+            for n_iter in range(self.number_iterations):
+                if norm_diff > 10E-24:
+                    print("ITERATION {}".format(n_iter))
+
+                    # Potentially remove this for a single call to sketch from the sketch_function
+                    # start_sketch_time = default_timer()
+                    S_A = summaries[:,:, n_iter]
+                    # end_sketch_time = default_timer() - start_sketch_time
+                    # print("SKETCH TIME: {}".format(end_sketch_time))
+                    # sketch_time += end_sketch_time
+
+
+                    ### optimization ###
+                    opt_start = default_timer()
+                    #sub_prob = lasso_qp_iters(S_A, ATy, covariance_mat, _lambda, x0)
+                    sub_prob = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0)
+                    end_opt_time = default_timer()-opt_start
+                    opt_time += end_opt_time
+
+                    ### Norm checking and updates ###
+                    #x_out = sub_prob[2]
+                    x_out = sub_prob[0]
+
+                    x_new = x_out[self.d:] - x_out[:self.d]
+                    #print("iterative norm ",np.linalg.norm(x_new))
+                    new_obj_val = lasso(A,x_new,y,lasso_bound)
+                    norm_diff = np.abs(new_obj_val - old_obj_val)/old_obj_val
+                    #print("soln norm ", np.linalg.norm(x_new,1))
+                    #approx_norm_sum += np.linalg.norm(x_new,1)
+                    print("Norm diff {}".format(norm_diff))
+                    x0 += x_new
+                    old_obj_val = new_obj_val
+
+            print("Sum of norms: {}".format(approx_norm_sum))
+            print("x approx norm ", np.linalg.norm(x0,1))
+            print("Setup cost: {}".format(setup_time))
+            #print("Total sketching time: {}".format(sketch_time))
+            print("Total optimization time: {}".format(opt_time))
+
+            if timing:
+                return x0, opt_time
+            else:
+                return x0
