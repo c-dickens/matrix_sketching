@@ -1,11 +1,21 @@
 # fastwht folder
 lib/fastwht/
 
-# ds_store
+# ds_store and logs
 **/.DS_Store
-
+**.log
+**/.ipynb_checkpoints
 # notebooks
-lib/sandbox
+**/.ipynb
+tests/timings.ipynb
+
+# Ignore the paper and figures directories
+paper
+figures
+
+# NB want to include the following in sandbox
+lib/sandbox/*  # ignore everything in sandbox except...
+!lib/sandbox/profiling_lasso.py
 
 __pycache__
 
