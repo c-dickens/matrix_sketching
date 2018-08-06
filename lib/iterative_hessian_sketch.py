@@ -4,7 +4,7 @@ Class implementation of the iterative hessian sketch
 import numpy as np
 from scipy.optimize import minimize
 from scipy.sparse import coo_matrix
-from . import Sketch, CountSketch, SRHT
+from . import Sketch, CountSketch, SRHT, GaussianSketch
 import quadprog as qp
 from timeit import default_timer
 
@@ -41,7 +41,7 @@ def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x):
 
 
 
-class IHS(CountSketch, SRHT):
+class IHS(CountSketch, SRHT, GaussianSketch):
     '''Performs the iterative hessian sketch method by calling a
     specific random projection.
 
@@ -72,7 +72,8 @@ class IHS(CountSketch, SRHT):
         self.number_iterations = number_iterations
         self.data_shape = data.shape
         self.sketch_function = {"CountSketch" : CountSketch,
-                                "SRHT"        : SRHT}
+                                "SRHT"        : SRHT,
+                                "Gaussian"    : GaussianSketch}
         X_coo = coo_matrix(self.data)
         self.nonzero_rows = X_coo.row
         self.nonzero_cols = X_coo.col
@@ -92,7 +93,14 @@ class IHS(CountSketch, SRHT):
             else:
                 super(SRHT,self).__init__(data, sketch_dimension)
 
-    def generate_summaries(self):
+        elif self.sketch_type == "Gaussian":
+            if random_state is not None:
+                super(GaussianSketch,self).__init__(data, sketch_dimension,\
+                                                            random_state)
+            else:
+                super(GaussianSketch,self).__init__(data, sketch_dimension)
+
+    def generate_summaries(self, timing=False):
         '''Generates T = number_iterations sketches of type defined by
         self.sketch_type and returns a 3d numpy array with each sketch being a
         layer in the tensor indexed by its iteration nuber to be called.
@@ -112,28 +120,38 @@ class IHS(CountSketch, SRHT):
         all_sketches = np.zeros(shape=(self.sketch_dimension,
                                        self.data_shape[1],
                                        self.number_iterations))
-
+        summary_times = np.zeros(shape=(self.number_iterations,))
         if self.random_state is not None:
             for iter_num in range(self.number_iterations):
                 #print("Testing sketch function {}".format(self.sketch_type))
 
-                summary = sketch_function(self.data, self.sketch_dimension)
+                summary = sketch_function(self.data, self.sketch_dimension, timing=True)
+                #end = default_timer() - start
 
                 # if self.sketch_type == "CountSketch":
                 #     all_sketches[:,:,iter_num] = summary.sketch()
                 # else:
-                all_sketches[:,:,iter_num] = summary.sketch(self.data)
-            return all_sketches
+                all_sketches[:,:,iter_num], time = summary.sketch(self.data)
+                summary_times[iter_num] = time
+
+            if timing is True:
+                return all_sketches, np.mean(summary_times)
+            else:
+                return all_sketches
         else:
             for iter_num in range(self.number_iterations):
                 #print("")
                 #print("Iteration {}".format(iter_num))
-                summary = sketch_function(self.data, self.sketch_dimension,self.random_state)
+                summary,time = sketch_function(self.data, self.sketch_dimension,self.random_state, timing=True)
+                summary_times[iter_num] = time
                 # if self.sketch_type == "CountSketch":
                 #     all_sketches[:,:,iter_num] = summary.sketch()
                 # else:
                 all_sketches[:,:,iter_num] = summary.sketch(self.data)
-            return all_sketches
+            if timing is True:
+                return all_sketches, np.mean(summary_times)
+            else:
+                return all_sketches
 
     def solve(self, constraints=None, timing=False):
         '''constraints is a dictionary of constraints to pass to the scipy solver
@@ -161,15 +179,20 @@ class IHS(CountSketch, SRHT):
                 approx_hessian = sketch.T@sketch
                 inner_product = self.data.T@(self.targets - self.data@x0)
 
-                QP_sol = qp.solve_qp(approx_hessian,inner_product)
-                print("Iteration: {}".format(iter_num))
-                x_new = QP_sol[0]
+                #QP_sol = qp.solve_qp(approx_hessian,inner_product)
+                #print("Iteration: {}".format(iter_num))
+                #x_new = QP_sol[0]
+
+                z = ATy  - self.data.T@(self.data@x0) + approx_hessian@x0
+                sol = np.linalg.lstsq(approx_hessian,z)
+                x_new = sol[0]
+                x0 = x_new
 
 
                 # Fractional decrease per iteration check
                 #norm_diff = np.linalg.norm(self.data@(x_new - x0))**2/old_norm
                 #print(norm_diff)
-                x0 += x_new
+                #x0 += x_new
                 #old_norm = np.linalg.norm(self.data@(x0))**2
             # else:
             #     #print("Break")

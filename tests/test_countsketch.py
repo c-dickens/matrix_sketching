@@ -8,7 +8,8 @@ sys.path.append("..")
 import lib
 from lib import Sketch
 from lib import CountSketch
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, random
+from scipy import sparse
 
 
 
@@ -81,7 +82,6 @@ class TestSketch(unittest.TestCase):
         self.assertEqual(sketch.shape[1], X.shape[1]) # columns preserved
         self.assertEqual(sketch.shape[0],sketch_size) # rows are sketch size
         print("Passed")
-    #
         # Check with both random_state and second_data
         print("Checking with both arguments")
         summary = CountSketch(X, sketch_dimension=sketch_size,random_state=random_seed, second_data=np.ones_like(X))
@@ -128,6 +128,19 @@ class TestSketch(unittest.TestCase):
         self.assertTrue(error2 < error1)
         self.assertTrue(error3 < error2)
 
+    def test_with_sparse_data(self):
+        print("checking with sparse input")
+        A = sparse.random(50000,500, 0.05)
+        print(type(A))
+        sketch_size = 700
+        mean_time = 0
+        repeats = 100
+        for i in range(repeats):
+            summary = CountSketch(X, sketch_dimension=sketch_size)
+            start = default_timer()
+            sketch = summary.sketch(X)
+            mean_time += default_timer() - start
+        print("Mean summary time on ({},{},{}): {}".format(subset_size, X.shape[1], sketch_size,mean_time/repeats))
 
     # def test_mat_vec_product(self):
     #     '''Tests that the matrix vector product is preserved'''

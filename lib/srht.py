@@ -11,6 +11,7 @@ References
 
 import numpy as np
 from hadamard import fastwht
+from timeit import default_timer
 from . import Sketch
 
 def shift_bit_length(x):
@@ -143,17 +144,24 @@ class SRHT(Sketch):
     https://arxiv.org/abs/1411.4357 -- DP Woodruff
     '''
 
-    def __init__(self, data, sketch_dimension, random_state=None, second_data=None):
+    def __init__(self, data, sketch_dimension, random_state=None, second_data=None, timing=False):
         if random_state is not None or second_data is not None:
             super(SRHT,self).__init__(data, sketch_dimension,\
                                                         random_state, second_data)
         else:
             super(SRHT,self).__init__(data, sketch_dimension)
+        self.timing = timing
 
     def sketch(self, data):
         #S = srht_transform(data, self.sketch_dimension)
-        S = srht_transform1(data, self.sketch_dimension)
-        return S
+        if self.timing:
+            start = default_timer()
+            S = srht_transform1(data, self.sketch_dimension)
+            end = default_timer() - start
+            return S, end
+        else:
+            S = srht_transform1(data, self.sketch_dimension)
+            return S
 
     # def sketch_product(self, first_data, second_data):
     #     '''

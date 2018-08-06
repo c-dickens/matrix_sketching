@@ -107,10 +107,13 @@ class TestSketch(unittest.TestCase):
         hessian sketching scheme'''
 
         print("TESTING UNCONSTRAINED ITERATIVE HESSIAN SKETCH ALGORITHM")
-        sketch_size = 500
-        num_iters = 10
+        d = 64
+        n = 100*d
+        sketch_size = 6*d
+        num_iters = 6#np.int(np.ceil(np.log(n)))
+        print("Using {} iterations".format(num_iters))
         # Setup
-        syn_data,syn_targets,coef = make_regression(n_samples = 5000, n_features = 2, coef=True)
+        syn_data,syn_targets,coef = make_regression(n_samples=n, n_features = d, n_informative=d, noise=1.0, coef=True)
         optimal_weights = np.linalg.lstsq(syn_data,syn_targets)[0]
         for sketch_method in sketch_names:
             iterative_hessian = IHS(data=syn_data, targets=syn_targets, sketch_dimension=sketch_size,
@@ -129,57 +132,59 @@ class TestSketch(unittest.TestCase):
             print("Sketch: {}".format(sketch_method))
             #print("Approx. weights: {}".format(x_approx))
             #print("Optimal weights: {}".format(optimal_weights))
-            print("||x^* - x'||_A^2: {}".format((np.linalg.norm(syn_data@(x_approx - optimal_weights)**2/syn_data.shape[0]))))
-            np.testing.assert_allclose(x_approx, optimal_weights)
+            print("Error to LSQ: {}".format((np.linalg.norm(syn_data@(x_approx - optimal_weights)**2/syn_data.shape[0]))))
+            print("LSQ-Truth error: {}".format((np.linalg.norm(syn_data@(coef - optimal_weights)**2/syn_data.shape[0]))))
+            print("Error to TRUTH: {}".format((np.linalg.norm(syn_data@(x_approx - coef)**2/syn_data.shape[0]))))
+            np.testing.assert_almost_equal(optimal_weights, x_approx, decimal=6)
         print("COMPLETED UNCONSTRAINED ITERATIVE HESSIAN SKETCH ALGORITHM")
 
 
-    def test_lasso_regression(self):
-        '''Show that a random lasso instance is approximated by the
-        hessian sketching scheme'''
-        print(80*"-")
-        print("TESTING LASSO ITERATIVE HESSIAN SKETCH ALGORITHM")
-
-        ncols = 250
-        nrows = 10000
-        sketch_size = 1000
-        sklearn_lasso_bound = 1000
-        X, y, coef = generate_lasso_data(nrows, ncols, sigma=10, density=0.5)
-        trials = 5
-
-        ### Test Sklearn implementation
-        clf = Lasso(sklearn_lasso_bound)
-        x_opt = clf.fit((X.shape[0])*X,(X.shape[0])*y).coef_
-        print("Potential norm bound for ihs: {}".format(np.linalg.norm(x_opt,1)))
-        ihs_lasso_bound = np.linalg.norm(x_opt,1) + 1E-5
-        ### Test QP formulation with quadprog
-        result = qp_lasso(X, y, ihs_lasso_bound)
-        x = result[0]
-        x_qp = -1.0*(x[ncols:] - x[:ncols])
-        #print("x opt ",x_opt)
-        #print("QP x", -1.0*x_qp)
-        np.testing.assert_almost_equal(np.linalg.norm(x_opt,1), np.linalg.norm(x_qp,1), decimal=1)
-        print("QP SOLVER AND SKLEARN HAVE CORRESPONDING SOLUTIONS")
-
-
-        for sketch_method in sketch_names:
-            ihs_lasso = IHS(data=X, targets=y, sketch_dimension=sketch_size,
-                                                    sketch_type=sketch_method,
-                                                    number_iterations=20,
-                                                    random_state=random_seed)
-            print("STARTING IHS-LASSO ALGORITHM WITH {}".format(sketch_method), 60*"*")
-            #start = default_timer()
-            x_ihs = ihs_lasso.solve({'problem' : "lasso", 'bound' : ihs_lasso_bound})
-            print("Comparing difference between opt and approx:")
-            #print(np.linalg.norm(x_opt - x_ihs))
-            print("||x^* - x'||_A^2: {}".format((np.linalg.norm(X@(x_opt - x_ihs)**2/X.shape[0]))))
-
-            # test that the constrain bound is met
-            self.assertTrue(np.linalg.norm(x_ihs,1) - ihs_lasso_bound < 0.01)
-
-            # Test convergence
-            np.testing.assert_array_almost_equal(x_opt, x_ihs, decimal=4)
-            print("SOLUTION IS CORRECT")
+    # def test_lasso_regression(self):
+    #     '''Show that a random lasso instance is approximated by the
+    #     hessian sketching scheme'''
+    #     print(80*"-")
+    #     print("TESTING LASSO ITERATIVE HESSIAN SKETCH ALGORITHM")
+    #
+    #     ncols = 250
+    #     nrows = 10000
+    #     sketch_size = 1000
+    #     sklearn_lasso_bound = 1000
+    #     X, y, coef = generate_lasso_data(nrows, ncols, sigma=10, density=0.5)
+    #     trials = 5
+    #
+    #     ### Test Sklearn implementation
+    #     clf = Lasso(sklearn_lasso_bound)
+    #     x_opt = clf.fit((X.shape[0])*X,(X.shape[0])*y).coef_
+    #     print("Potential norm bound for ihs: {}".format(np.linalg.norm(x_opt,1)))
+    #     ihs_lasso_bound = np.linalg.norm(x_opt,1) + 1E-5
+    #     ### Test QP formulation with quadprog
+    #     result = qp_lasso(X, y, ihs_lasso_bound)
+    #     x = result[0]
+    #     x_qp = -1.0*(x[ncols:] - x[:ncols])
+    #     #print("x opt ",x_opt)
+    #     #print("QP x", -1.0*x_qp)
+    #     np.testing.assert_almost_equal(np.linalg.norm(x_opt,1), np.linalg.norm(x_qp,1), decimal=1)
+    #     print("QP SOLVER AND SKLEARN HAVE CORRESPONDING SOLUTIONS")
+    #
+    #
+    #     for sketch_method in sketch_names:
+    #         ihs_lasso = IHS(data=X, targets=y, sketch_dimension=sketch_size,
+    #                                                 sketch_type=sketch_method,
+    #                                                 number_iterations=20,
+    #                                                 random_state=random_seed)
+    #         print("STARTING IHS-LASSO ALGORITHM WITH {}".format(sketch_method), 60*"*")
+    #         #start = default_timer()
+    #         x_ihs = ihs_lasso.solve({'problem' : "lasso", 'bound' : ihs_lasso_bound})
+    #         print("Comparing difference between opt and approx:")
+    #         #print(np.linalg.norm(x_opt - x_ihs))
+    #         print("||x^* - x'||_A^2: {}".format((np.linalg.norm(X@(x_opt - x_ihs)**2/X.shape[0]))))
+    #
+    #         # test that the constrain bound is met
+    #         self.assertTrue(np.linalg.norm(x_ihs,1) - ihs_lasso_bound < 0.01)
+    #
+    #         # Test convergence
+    #         np.testing.assert_array_almost_equal(x_opt, x_ihs, decimal=4)
+    #         print("SOLUTION IS CORRECT")
 
 
 

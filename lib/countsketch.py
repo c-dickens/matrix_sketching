@@ -9,6 +9,8 @@ import numba
 from numba import jit
 from . import Sketch
 from scipy.sparse import coo_matrix
+import scipy.sparse
+from timeit import default_timer
 
 @jit(nopython=True)
 def _countSketch(data, sketch_dimension):
@@ -78,7 +80,7 @@ class CountSketch(Sketch):
     https://arxiv.org/abs/1411.4357 -- DP Woodruff
     '''
 
-    def __init__(self, data, sketch_dimension, random_state=None, second_data=None):
+    def __init__(self, data, sketch_dimension, random_state=None, second_data=None, timing=False):
         if random_state is not None or second_data is not None:
             super(CountSketch,self).__init__(data, sketch_dimension,\
                                                         random_state, second_data)
@@ -86,15 +88,29 @@ class CountSketch(Sketch):
             super(CountSketch,self).__init__(data, sketch_dimension)
 
         self.n, self.d = data.shape
-        X_coo = coo_matrix(self.data)
-        self.nonzero_rows = X_coo.row
-        self.nonzero_cols = X_coo.col
-        self.nonzero_data = X_coo.data
+
+        if scipy.sparse.issparse(data):
+            self.nonzero_rows = data.row
+            self.nonzero_cols = data.col
+            self.nonzero_data = data.data
+        else:
+            X_coo = coo_matrix(self.data)
+            self.nonzero_rows = X_coo.row
+            self.nonzero_cols = X_coo.col
+            self.nonzero_data = X_coo.data
+        self.timing = timing
 
     def sketch(self, data):
-        '''data argument superfluous but indicates that sketching is done on X'''
-        summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
-        return summary
+        '''data argument superfluous but indicates that sketching is done on X
+        and maintains consistency'''
+        if self.timing:
+            start = default_timer()
+            summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
+            sketch_time = default_timer() - start
+            return summary, sketch_time
+        else:
+            summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
+            return summary
 
     def sketch_memory(self,data):
         summary = countSketch_memory(data, self.sketch_dimension)

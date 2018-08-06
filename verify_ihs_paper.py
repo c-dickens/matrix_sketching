@@ -3,7 +3,9 @@ Experimental script which verifies the IHS paper results with the count sketch,
 SRHT, and Gaussian sketch.
 
 Experiments:
-1. MSE vs row dimension
+1. Solution Error / Prediction Error vs row dimension
+2. Error compared to number of iterations
+3. Error compared to dimensionality of the data.
 '''
 import itertools
 import numpy as np
@@ -122,7 +124,7 @@ def experiment_mse_vs_row_dim():
     ax0.set_xscale('log')
     ax0.set_yscale('log')
     ax0.set_xlabel("n")
-    ax0.set_ylabel("Mean Square Error")
+    ax0.set_ylabel("Solution Error")
     ax0.legend()
     ax0.grid(True)
 

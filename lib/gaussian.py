@@ -4,6 +4,7 @@ Gaussian sketching matrices
 
 import numpy as np
 from . import Sketch
+from timeit import default_timer
 
 class GaussianSketch(Sketch):
     '''Reduces dimensionality by using a Gaussian random projection.
@@ -16,19 +17,26 @@ class GaussianSketch(Sketch):
     sketch_dimension: int - number of rows to compress into.
     '''
 
-    def __init__(self, data, sketch_dimension, random_state=None, second_data=None):
+    def __init__(self, data, sketch_dimension, random_state=None, second_data=None, timing=False):
         if random_state is not None or second_data is not None:
             super(GaussianSketch,self).__init__(data, sketch_dimension,\
                                                         random_state, second_data)
         else:
             super(GaussianSketch,self).__init__(data, sketch_dimension)
 
+        self.timing = timing
+
 
     def sketch(self,data):
-        S = (self.sketch_dimension)**(-0.5)*np.random.randn(\
-                                            self.sketch_dimension, self.num_rows)
-        return np.dot(S, data)
 
+        if self.timing:
+            start = default_timer()
+            S = (self.sketch_dimension)**(-0.5)*np.random.randn(self.sketch_dimension, self.num_rows)
+            end = default_timer() - start
+            return S@data, end
+        else:
+            S = (self.sketch_dimension)**(-0.5)*np.random.randn(self.sketch_dimension, self.num_rows)
+            return S@data
     def sketch_product(self, first_data, second_data):
         '''
         sketches self and another dataset.

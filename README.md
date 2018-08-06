@@ -20,11 +20,14 @@ The initial problem is to investigate how different random transforms can be use
 1. `verify_ihs_paper.py` -- script to show how Count Sketch fits into the IHS
 sketching scheme.
   [x] - Unconstrained regression  as `n` grows and `d` and sketch dim are fixed.
-  _PLOTTING INCOMPLETE_
+  _PLOTTING Done_
   [x] - Unconstrained regression as the number of iterations grows, `n,d` and
   sketch size fixed but the sketches and the sketching dimension are varied.
   _Plotting Done_
-  [x] - Unconstrained regression with all sketches. Vary `d` and fix a corresponding `n`. Sketch size and num iters are fixed.  _plotting almost done_.
+  [x] - Unconstrained regression with all sketches. Vary `d` and fix a corresponding `n`. Sketch size and num iters
+  are fixed.  _plotting done_.
+  [] - Tidy up axes and labels etc.
+
 2. `sketching_lasso_synthetic.py` -- the sketched lasso problem on various synthetic
 datasets.
 
