@@ -26,9 +26,9 @@ def _countSketch(data, sketch_dimension):
     return sketch
 
 @jit(nopython=True)
-def countSketch_memory(data, sketch_dimension):
+def countSketch_dense(data, sketch_dimension):
     '''
-    An in-memory implementation of the count sketch.
+    count sketch for dense data.
     Views the matrix row-wise and hashes rows to buckets in S.
     '''
 
@@ -78,6 +78,9 @@ class CountSketch(Sketch):
     References
     -----------
     https://arxiv.org/abs/1411.4357 -- DP Woodruff
+
+    Needs to have the inputs sparse matrix as a coo_matrix so that the
+    .row/.col/.data attributes can be used.
     '''
 
     def __init__(self, data, sketch_dimension, random_state=None, second_data=None, timing=False):
@@ -93,28 +96,39 @@ class CountSketch(Sketch):
             self.nonzero_rows = data.row
             self.nonzero_cols = data.col
             self.nonzero_data = data.data
+            self.sparse_bool = True
         else:
-            X_coo = coo_matrix(self.data)
-            self.nonzero_rows = X_coo.row
-            self.nonzero_cols = X_coo.col
-            self.nonzero_data = X_coo.data
+            # X_coo = coo_matrix(self.data)
+            # self.nonzero_rows = X_coo.row
+            # self.nonzero_cols = X_coo.col
+            # self.nonzero_data = X_coo.data
+            self.sparse_bool = False
         self.timing = timing
 
     def sketch(self, data):
         '''data argument superfluous but indicates that sketching is done on X
         and maintains consistency'''
-        if self.timing:
-            start = default_timer()
-            summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
-            sketch_time = default_timer() - start
-            return summary, sketch_time
-        else:
+        # if self.timing:
+        #     start = default_timer()
+        #     summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
+        #     sketch_time = default_timer() - start
+        #     return summary, sketch_time
+        # else:
+        #     summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
+        #     return summary
+        if self.sparse_bool:
+            print("Using sparse method")
             summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
             return summary
+        else:
+            print("Using dense method")
+            summary = countSketch_dense(data, self.sketch_dimension)
+            return summary
 
-    def sketch_memory(self,data):
-        summary = countSketch_memory(data, self.sketch_dimension)
-        return summary
+    #
+    # def sketch_memory(self,data):
+    #     summary = countSketch_memory(data, self.sketch_dimension)
+    #     return summary
 
     # def sketch_product(self, first_data, second_data):
     #     '''
