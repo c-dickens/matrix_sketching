@@ -2,13 +2,19 @@
 
 CWT is the Clarkson-Woodruff Transform (CountSketch) and SRHT is is the randomized
 hadamard Transform'''
+import json
 import itertools
+import pickle
+import helper
 import numpy as np
 import scipy as sp
 from scipy import sparse
+from scipy.sparse import load_npz
 from timeit import default_timer
 from lib import countsketch, srht, gaussian, classical_sketch
 from lib import ClassicalSketch
+import datasets_config
+from joblib import Parallel, delayed
 
 
 import matplotlib.pyplot as plt
@@ -22,9 +28,10 @@ sketch_functions = {"CountSketch": countsketch.CountSketch,
 
 param_grid = {
         'num trials' : 5,
-        'rows' : [1000],
-        'columns' : [10, 50],#, 500, 1000],
-        'density' : np.linspace(0.01,0.1, num=10)
+        'rows' : [10000, 25000, 50000, 100000],#, 100000,250000],
+        'columns' : [10,50,100, 500, 1000],#, 100, 500, 1000],
+        'sketch_factors' : 5,
+        'density' : np.linspace(0.1,1.0, num=10)
     }
 
 # nb. the marker styles are for the plots with multiple sketch settings.
@@ -48,7 +55,6 @@ plotting_params = {"CountSketch" : {"colour" : "b",
                                   }
 
 
-
 def experiment_summary_time_vs_sparsity(n_rows, n_cols, n_trials, sketch_size, densities):
     '''
     Function to automate the experiments measuring time
@@ -61,7 +67,6 @@ def experiment_summary_time_vs_sparsity(n_rows, n_cols, n_trials, sketch_size, d
     then the times associated with testing that experiment.
     One dict for CWT and one for SRHT.
     '''
-    rho_str = [str(density) for density in densities]
     CWT_time = {}
     SRHT_time = {}
 
@@ -90,6 +95,63 @@ def experiment_summary_time_vs_sparsity(n_rows, n_cols, n_trials, sketch_size, d
         SRHT_time[density] = SRHT_summary_time/n_trials
 
     return CWT_time, SRHT_time
+
+def full_summary_times_and_plots(row_list, column_list):
+    results = {
+        "CountSketch" : {},
+        "SRHT"        : {}
+    }
+
+    for key in results.keys():
+        results[key] = {}
+        for n in row_list:
+            results[key][n] = {}
+            for d in column_list:
+                    results[key][n][d] = {}
+    print(results)
+
+    for n_rows in row_list:
+        n_trials = param_grid['num trials']
+        print('Testing design matrix: {} rows)'.format(n_rows))
+        exp_result_list = Parallel(n_jobs=-1)(delayed(experiment_summary_time_vs_sparsity)\
+                        (n_rows,cols,n_trials,5*cols,param_grid['density']) for cols in column_list)
+        print(exp_result_list)
+
+        for ii in range(len(column_list)):
+            dicts = exp_result_list[ii]
+            count_sketch_dict= dicts[0]
+            srht_dict = dicts[1]
+            results["CountSketch"][n_rows][column_list[ii]] = count_sketch_dict
+            results["SRHT"][n_rows][column_list[ii]] = srht_dict
+
+    print(results)
+
+
+    np.save('figures/summary_time_vs_sparsity.npy', results)
+    print(json.dumps(results,indent=4))
+
+    for n in param_grid['rows']:
+        fig, ax = plt.subplots(dpi=250)
+        for sketch,d in itertools.product(results.keys(), param_grid['columns']):
+            print(n,sketch,d)
+            my_colour = plotting_params[sketch]["colour"]
+            my_label = sketch + str(d)
+            my_line = plotting_params[sketch]["line_style"]
+            # this just pulls the index of d in the param list and uses that as
+            # the marker inded
+            my_marker = my_markers[param_grid['columns'].index(d)]
+            ax.plot(param_grid['density'], results[sketch][n][d].values(),
+                    color=my_colour, linestyle=my_line, linewidth=2.0,
+                    marker=my_marker, markersize=8.0,label=my_label)
+
+        ax.legend(title='n = {}'.format(n),loc=1)
+        ax.set_yscale('log')
+        ax.set_ylabel('log(seconds)')
+        ax.set_xlabel('Density')
+        save_name = "figures/summary_time_density_"+str(n)+".pdf"
+        fig.savefig(save_name, bbox_inches="tight")
+    plt.show()
+    return results
 
 def experiment_summary_distortion_vs_aspect_ratio(n_rows, n_trials, sketch_size=1.5,density=0.3):
     '''Experiment to see how distortion varies for a fixed sketch size over
@@ -129,65 +191,134 @@ def experiment_summary_distortion_vs_aspect_ratio(n_rows, n_trials, sketch_size=
     print(distortions)
     return distortions
 
-def experiment_summary_time_distortion_real_data(n_trials):
+def experiment_summary_time_distortion_real_data():
 
-    dataset = 'YearPredictionMSD'
-    data_path = 'data/'+ dataset + '.npy'
-    rawdata_mat = np.load(data_path)
+    # dataset = 'YearPredictionMSD'
+    # data_path = 'data/'+ dataset + '.npy'
 
-    #X = rawdata_mat[:, 1:]
-    #data
-    X = sparse.random(1000000,500, 0.2)
-    print(type(X))
-    #X = data.toarray()
-    y = rawdata_mat[:, 0]
-    y = y[:,None]
+    datasets = datasets_config.datasets
+    sketch_factors = [2,5,10]
 
-    print("Shape of data: {}".format(rawdata_mat.shape))
-    print("Shape of testing data: {}".format(X.shape))
-    print("Shape of test vector: {}".format(y.shape))
-
-    # True quantities
-    cov_time_total = 0
-    for _ in range(n_trials):
-        print("iteration ", _)
-        cov_time_start = default_timer()
-        covariance_matrix = X.T@X
-        cov_time_total += default_timer() - cov_time_start
-    cov_time_mean = cov_time_total/n_trials
-    print("Exact time: {}".format(cov_time_mean))
-
-    # True values
-    # covariance_matrix_norm = np.linalg.norm(covariance_matrix, ord='fro')
-    # XTy_mat = X.T@y
-    # XTy_mat_norm = np.linalg.norm(XTy_mat, ord='fro')
+    # Results dict
+    results = {}
 
 
+    for data in datasets:
+        n_trials = datasets[data]["repeats"]
+        print("-"*80)
+        print("TESTING DATA {} WITH {} REPEATS".format(data, n_trials))
 
-    # Approximate Hessian
-    summary_time = 0
-    approx_hessian_time = 0
-    for _ in range(n_trials):
-        print("iteration ", _)
-        summary = countsketch.CountSketch(data=X,sketch_dimension=600)
-        start = default_timer()
-        S_A = summary.sketch(data=X)
-        summary_time += default_timer() - start
-
-        hessian_start = default_timer()
-        approx_hessian = S_A.T@S_A
-        approx_hessian_time += default_timer() - hessian_start
-
-    mean_total_time = approx_hessian_time  + summary_time
-
-    print("Total time {}".format(mean_total_time))
+        input_file = datasets[data]["filepath"]
 
 
+        # Read in the file
+        #subset_size = 10000
+        if data is "rail2586":
+            rawdata = load_npz(input_file)
+            print("Sparse type: {} so getting row/col/data triples".format(type(rawdata)))
+            X = rawdata
+            X_row, X_col, X_data = X.row, X.col, X.data
+        else:
+            rawdata = np.load(input_file)
+            if data is "california_housing_train":
+                test_data = np.load("data/california_housing_test.npy")
+                rawdata = np.concatenate((rawdata,test_data),axis=0)
+            X = rawdata[:, 1:]
+            y = rawdata[:,-1] # nb for the rail 2586 there is not a target label
+
+
+        # if type(rawdata) == 'scipy.sparse.coo.coo_matrix':
+        #     X = rawdata
+        # else:
+
+        n,d = X.shape
+
+        print("Shape of X: {}".format(X.shape))
+        #print("Shape of y: {}".format(y.shape))
+
+        # output dict structure
+        results[data] = {"Exact Time" : 0}
+        for sketch in ["CountSketch", "SRHT"]:
+            results[data][sketch] = {}
+            for factor in sketch_factors:
+                results[data][sketch][factor] = {"sketch time"  : 0,
+                                         "product time" : 0,
+                                         "total time"   : 0,
+                                         "error"        : 0}
+
+
+        # True values
+        print("-"*80)
+        print("ENTERING EXPERIMENT LOOP FOR TRUE VALUES")
+        cov_time_total = 0
+        for _ in range(n_trials):
+            print("iteration ", _)
+            cov_time_start = default_timer()
+            covariance_matrix = X.T@X
+            cov_time_total += default_timer() - cov_time_start
+        cov_time_mean = cov_time_total/n_trials
+        print("Exact time for {}: {}".format(data,cov_time_mean))
+        results[data]["Exact Time"] = cov_time_mean
+
+        if sp.sparse.issparse(X):
+            covariance_matrix_norm = sp.sparse.linalg.norm(covariance_matrix, ord='fro')**2
+        else:
+            covariance_matrix_norm = np.linalg.norm(covariance_matrix, ord='fro')**2
+
+
+
+        print("-"*80)
+        print("ENTERING EXPERIMENT LOOP FOR SKETCH")
 
 
 
 
 
+        for sketch_method in ["CountSketch", "SRHT"]:
+            if (sketch_method is "SRHT") and sp.sparse.issparse(X):
+                #X = np.asarray(X.todense())
+                #X = X[:subset_size,:]
+                #print("Changed type")
+                #print("In future will need to continue here as too large.")
+                print(sketch_method)
+                print(type(X))
+                print("CONTINUING AS DATA TOO LARGE FOR SRHT")
+                continue
+
+            for factor in sketch_factors:
+                # Measurable variables
+                summary_time = 0
+                approx_hessian_time = 0
+                distortion = 0
+                print("TESTING {} with sketch size {}*d".format(sketch_method, factor))
+                for _ in range(n_trials):
+                    print("iteration ", _)
+                    sketch_size = factor*d
+                    #summary = countsketch.CountSketch(data=X,sketch_dimension=sketch_sizes[0])
+                    summary = sketch_functions[sketch_method](data=X,sketch_dimension=sketch_size)
+                    start = default_timer()
+                    S_A = summary.sketch(data=X)
+                    summary_time += default_timer() - start
+
+                    hessian_start = default_timer()
+                    approx_hessian = S_A.T@S_A
+                    approx_hessian_time += default_timer() - hessian_start
+
+                    distortion += np.linalg.norm(approx_hessian - covariance_matrix,
+                                                ord='fro')**2/covariance_matrix_norm
+
+                mean_total_time = (approx_hessian_time  + summary_time)/n_trials
+                mean_distortion = distortion / n_trials
+                print("Mean total time {}".format(mean_total_time))
+                print("Mean distortion: {}".format(mean_distortion))
+
+
+                results[data][sketch_method][factor]["sketch time"] = summary_time/n_trials
+                results[data][sketch_method][factor]["product time"] = approx_hessian_time/n_trials
+                results[data][sketch_method][factor]["total time"] = mean_total_time
+                results[data][sketch_method][factor]["error"] = mean_distortion
+    np.save("figures/real_data_summary_time.npy", results)
+    return results
 
 ### Plotting functions:
 
@@ -259,34 +390,21 @@ def plotting_distortion(distortion_results,n_rows=None,sketch_size=None):
 def main():
     ######### Script setup parameters ############
     # NB. Read from file in future
+    summary_time_start = default_timer()
+    full_summary_times_and_plots(param_grid['rows'], param_grid['columns'])
+    summary_time_end = default_timer() - summary_time_start
+    print("Script time: ", summary_time_end)
 
-    # results = {}
-    #
-    # for n_rows, n_cols in itertools.product(param_grid['rows'], param_grid['columns']):
-    #     n_trials = param_grid['num trials']
-    #     print('Testing design matrix ({},{})'.format(n_rows, n_cols))
-    #     sketch_size = 10*n_cols
-    #     C_T, S_T =  experiment_summary_time_vs_sparsity(n_rows, n_cols, n_trials,sketch_size,param_grid['density'])
-    #     results[(n_rows, n_cols, "CountSketch")] = C_T
-    #     results[(n_rows, n_cols, "SRHT")] = S_T
-    # print(results)
 
-    #plotting_summary_time_vs_sparsity(results)
-    # A = np.random.randn(10000, 50)
-    # sum = countsketch.CountSketch(A, 500).sketch(A)
-    # x = np.random.randn(50,)
-    # x = x/np.linalg.norm(x)
-    # true_norm = np.linalg.norm(A@x)
-    # approx_norm = np.linalg.norm(sum@x)
-    # print(true_norm**2)
-    # print(approx_norm**2)
-    # print(np.abs(true_norm**2 - approx_norm**2)/approx_norm**2)
-
+    ### COMPLETED EXPERIMENTS
     # distortions_to_plot = experiment_summary_distortion_vs_aspect_ratio(10000,20)
     # np.save("figures/distortion_vs_cols.npy", distortions_to_plot)
     # plotting_distortion(distortions_to_plot,10000,1.5)
 
-    experiment_summary_time_distortion_real_data(5)
+    # real_data_summary_time = experiment_summary_time_distortion_real_data()
+    # np.save("figures/real_data_summary_time.npy", real_data_summary_time)
+    # print(json.dumps(real_data_summary_time,indent=4))
+
 
 if __name__ == "__main__":
     main()
