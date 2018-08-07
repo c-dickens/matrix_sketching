@@ -19,4 +19,6 @@ lib/sandbox/*  # ignore everything in sandbox except...
 
 __pycache__
 
-data
+# Ignore all datasets except how to get them
+/data/
+!data/get_data/
