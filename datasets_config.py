@@ -3,11 +3,15 @@
 datasets = {
     "YearPredictionMSD" : {
             "filepath" : "data/YearPredictionMSD.npy",
-            "repeats"  : 5,
+            "repeats"  : 10,
     },
 
-    "rail256" : {
-        "filepath" : "data/rail2586.pkl",
-        "repeats"  :  5,
+    "rail2586" : {
+        "filepath" : "data/rail2586.npz",
+        "repeats"  :  10,
+    },
+    "california_housing_train" : {
+        "filepath" : "data/california_housing_train.npy",
+        "repeats"  : 10,
     }
 }

@@ -13,6 +13,9 @@ import numpy as np
 from hadamard import fastwht
 from timeit import default_timer
 from . import Sketch
+import scipy as sp
+import numba
+from numba import jit
 
 def shift_bit_length(x):
     '''Given int x find next largest power of 2.
@@ -68,7 +71,10 @@ def srht_transform1(input_matrix, sketch_size, seed=None):
     nrows = input_matrix.shape[0]
     diag = np.random.choice([1,-1], nrows)
     diag = diag[:,None]
+    # print("diag shape: {}".format(diag.shape))
+    # print("input mat shape: {}".format(input_matrix.shape))
     signed_mat = diag*input_matrix
+    # print(signed_mat.shape)
     S = fastwht(signed_mat)*shift_bit_length(nrows) # shift bit length is normalising factor
     sample = np.random.choice(nrows, sketch_size, replace=False)
     #sample.sort()
@@ -78,57 +84,166 @@ def srht_transform1(input_matrix, sketch_size, seed=None):
     return S
 
 
+#
+# def hadamard_transform(data):
+#     '''
+#     Real Fast Fourier Transform (FFT) Independently Applied to Each Column of A
+#
+#     Input
+#         a_mat: n-by-d dense np matrix.
+#
+#     Output
+#         c_mat: n-by-d matrix C = F * A.
+#         Here F is the n-by-n orthogonal real FFT matrix (not explicitly formed)
+#
+#     Notice that $C^T * C = A^T * A$;
+#     however, $C * C^T = A * A^T$ is not true.
+#     '''
+#     n = data.shape[0]
+#     H_mat = np.fft.fft(data, n=None, axis=0) / np.sqrt(n)
+#     if n % 2 == 1:
+#         cutoff_int = int((n+1) / 2)
+#         idx_real_vec = list(range(1, cutoff_int))
+#         idx_imag_vec = list(range(cutoff_int, n))
+#     else:
+#         cutoff_int = int(n/2)
+#         idx_real_vec = list(range(1, cutoff_int))
+#         idx_imag_vec = list(range(cutoff_int+1, n))
+#     sketch = H_mat.real
+#     sketch[idx_real_vec, :] *= np.sqrt(2)
+#     sketch[idx_imag_vec, :] = H_mat[idx_imag_vec, :].imag * np.sqrt(2)
+#     return sketch
 
-def hadamard_transform(data):
-    '''
-    Real Fast Fourier Transform (FFT) Independently Applied to Each Column of A
+#
+# def srht_transform(data, sketch_size):
+#     '''
+#     Subsampled Randomized Fourier Transform (SRFT) for Dense Matrix
+#
+#     Input
+#         a_mat: m-by-n dense np matrix;
+#         s_int: sketch size.
+#
+#     Output
+#         c_mat: m-by-s sketch C = A * S.
+#         Here S is the sketching matrix (not explicitly formed)
+#     '''
+#     n,d = data.shape
+#     random_signs = np.random.choice(2, n) * 2 - 1
+#     sample_ids = np.random.choice(n, sketch_size, replace=False)
+#     data = random_signs.reshape(n,1) * data
+#     data = hadamard_transform(data)
+#     summary = data[sample_ids, :] * np.sqrt(n / sketch_size)
+#     return summary
 
-    Input
-        a_mat: n-by-d dense np matrix.
-
-    Output
-        c_mat: n-by-d matrix C = F * A.
-        Here F is the n-by-n orthogonal real FFT matrix (not explicitly formed)
-
-    Notice that $C^T * C = A^T * A$;
-    however, $C * C^T = A * A^T$ is not true.
-    '''
-    n = data.shape[0]
-    H_mat = np.fft.fft(data, n=None, axis=0) / np.sqrt(n)
-    if n % 2 == 1:
-        cutoff_int = int((n+1) / 2)
-        idx_real_vec = list(range(1, cutoff_int))
-        idx_imag_vec = list(range(cutoff_int, n))
-    else:
-        cutoff_int = int(n/2)
-        idx_real_vec = list(range(1, cutoff_int))
-        idx_imag_vec = list(range(cutoff_int+1, n))
-    sketch = H_mat.real
-    sketch[idx_real_vec, :] *= np.sqrt(2)
-    sketch[idx_imag_vec, :] = H_mat[idx_imag_vec, :].imag * np.sqrt(2)
-    return sketch
-
-
-def srht_transform(data, sketch_size):
-    '''
-    Subsampled Randomized Fourier Transform (SRFT) for Dense Matrix
-
-    Input
-        a_mat: m-by-n dense np matrix;
-        s_int: sketch size.
-
-    Output
-        c_mat: m-by-s sketch C = A * S.
-        Here S is the sketching matrix (not explicitly formed)
-    '''
-    n,d = data.shape
-    random_signs = np.random.choice(2, n) * 2 - 1
-    sample_ids = np.random.choice(n, sketch_size, replace=False)
-    data = random_signs.reshape(n,1) * data
-    data = hadamard_transform(data)
-    summary = data[sample_ids, :] * np.sqrt(n / sketch_size)
-    return summary
-
+# @jit
+# def realfft_col(a_mat):
+#     '''
+#     Real Fast Fourier Transform (FFT) Independently Applied to Each Column of A
+#
+#     Input
+#         a_mat: n-by-d dense NumPy matrix.
+#
+#     Output
+#         c_mat: n-by-d matrix C = F * A.
+#         Here F is the n-by-n orthogonal real FFT matrix (not explicitly formed)
+#
+#     Notice that $C^T * C = A^T * A$;
+#     however, $C * C^T = A * A^T$ is not true.
+#     '''
+#     n_int = a_mat.shape[0]
+#     fft_mat = np.fft.fft(a_mat, n=None, axis=0) / np.sqrt(n_int)
+#     if n_int % 2 == 1:
+#         cutoff_int = int((n_int+1) / 2)
+#         idx_real_vec = list(range(1, cutoff_int))
+#         idx_imag_vec = list(range(cutoff_int, n_int))
+#     else:
+#         cutoff_int = int(n_int/2)
+#         idx_real_vec = list(range(1, cutoff_int))
+#         idx_imag_vec = list(range(cutoff_int+1, n_int))
+#     c_mat = fft_mat.real
+#     c_mat[idx_real_vec, :] *= np.sqrt(2)
+#     c_mat[idx_imag_vec, :] = fft_mat[idx_imag_vec, :].imag * np.sqrt(2)
+#     return c_mat
+#
+# @jit
+# def realfft_row(a_mat):
+#     '''
+#     Real Fast Fourier Transform (FFT) Independently Applied to Each Row of A
+#
+#     Input
+#         a_mat: m-by-n dense NumPy matrix.
+#
+#     Output
+#         c_mat: m-by-n matrix C = A * F.
+#         Here F is the n-by-n orthogonal real FFT matrix (not explicitly formed)
+#
+#     Notice that $C * C^T = A * A^T$;
+#     however, $C^T * C = A^T * A$ is not true.
+#     '''
+#     n_int = a_mat.shape[1]
+#     fft_mat = np.fft.fft(a_mat, n=None, axis=1) / np.sqrt(n_int)
+#     if n_int % 2 == 1:
+#         cutoff_int = int((n_int+1) / 2)
+#         idx_real_vec = list(range(1, cutoff_int))
+#         idx_imag_vec = list(range(cutoff_int, n_int))
+#     else:
+#         cutoff_int = int(n_int/2)
+#         idx_real_vec = list(range(1, cutoff_int))
+#         idx_imag_vec = list(range(cutoff_int+1, n_int))
+#     c_mat = fft_mat.real
+#     c_mat[:, idx_real_vec] *= np.sqrt(2)
+#     c_mat[:, idx_imag_vec] = fft_mat[:, idx_imag_vec].imag * np.sqrt(2)
+#     return c_mat
+#
+# @jit
+# def fast_srft(a_mat, s_int):
+#     '''
+#     Subsampled Randomized Fourier Transform (SRFT) for Dense Matrix
+#
+#     Input
+#         a_mat: m-by-n dense NumPy matrix;
+#         s_int: sketch size.
+#
+#     Output
+#         c_mat: m-by-s sketch C = A * S.
+#         Here S is the sketching matrix (not explicitly formed)
+#     '''
+#     n_int = a_mat.shape[1]
+#     sign_vec = np.random.choice(2, n_int) * 2 - 1
+#     idx_vec = np.random.choice(n_int, s_int, replace=False)
+#     a_mat = a_mat * sign_vec.reshape(1, n_int)
+#     a_mat = realfft_row(a_mat)
+#     c_mat = a_mat[:, idx_vec] * np.sqrt(n_int / s_int)
+#     return c_mat
+#
+# @jit
+# def srft2(a_mat, b_mat, s_int):
+#     '''
+#     Subsampled Randomized Fourier Transform (SRFT) for Dense Matrix
+#
+#     Input
+#         a_mat: m-by-n dense NumPy matrix;
+#         b_mat: d-by-n dense NumPy matrix;
+#         s_int: sketch size.
+#
+#     Output
+#         c_mat: m-by-s sketch C = A * S;
+#         d_mat: d-by-s sketch D = B * S.
+#         Here S is the sketching matrix (not explicitly formed)
+#     '''
+#     n_int = a_mat.shape[1]
+#     sign_vec = np.random.choice(2, n_int) * 2 - 1
+#     idx_vec = np.random.choice(n_int, s_int, replace=False)
+#
+#     a_mat = a_mat * sign_vec.reshape(1, n_int)
+#     a_mat = realfft_row(a_mat)
+#     c_mat = a_mat[:, idx_vec] * np.sqrt(n_int / s_int)
+#
+#     b_mat = b_mat * sign_vec.reshape(1, n_int)
+#     b_mat = realfft_row(b_mat)
+#     d_mat = b_mat[:, idx_vec] * np.sqrt(n_int / s_int)
+#     return c_mat, d_mat
+#
 
 
 
@@ -152,15 +267,20 @@ class SRHT(Sketch):
             super(SRHT,self).__init__(data, sketch_dimension)
         self.timing = timing
 
+        if sp.sparse.issparse(data):
+            raise TypeError("Expected a dense input matrix, got scipy sparse")
+
     def sketch(self, data):
         #S = srht_transform(data, self.sketch_dimension)
         if self.timing:
             start = default_timer()
             S = srht_transform1(data, self.sketch_dimension)
+            #S = (fast_srft(data.T, self.sketch_dimension)).T
             end = default_timer() - start
             return S, end
         else:
             S = srht_transform1(data, self.sketch_dimension)
+            #S = (fast_srft(data.T, self.sketch_dimension)).T
             return S
 
     # def sketch_product(self, first_data, second_data):

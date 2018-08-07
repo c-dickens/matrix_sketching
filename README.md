@@ -14,7 +14,13 @@ The initial problem is to investigate how different random transforms can be use
 - The scaling for the constrained QP is very severe as `d` increases (no surprises given that QP are `d^3` in the worst case) and in this increased `d` domain it may not be favourable to use the sketching technique.
 - However, if instead one can accept a heuristic solution then the penalised form can be used.
 - How does varying the sketch size affect the convergence of the problem?  So far it seems that very small sketches work fine.
-- At what point, if any, do we need to switch from the fast sparse Count Sketch implementation to the dense one?
+- At what point, if any, do we need to switch from the fast sparse Count Sketch
+implementation to the dense one?
+- I tested against the PyRLA implementation (hence the extra commented code
+  in the class definition) of the SRHT but mine seemed to be
+faster so used that one throughout.
+- using the `_countsketch_fast` function is faster than the dense function
+despite having to iterate over more values.
 
 ## Experiments
 1. `verify_ihs_paper.py` -- script to show how Count Sketch fits into the IHS
@@ -30,6 +36,13 @@ sketching scheme.
 
 2. `sketching_lasso_synthetic.py` -- the sketched lasso problem on various synthetic
 datasets.
+
+## Datasets
+- `YearPredictionMSD` - taken from UCI ML repo.  Download and usage from
+`get_data.py` and shell script in data repo.
+- `rail2586` - Taken from Florida Sparse Matrix Repo.  Download MATLAB file and
+save `X = X = (Problem.A)'  `.  Convert `.mat` to a `.txt` so others can
+reproduce the results.
 
 ### Credits
 I have used code from https://bitbucket.org/vegarant/fastwht to construct the SRHT and used https://github.com/wangshusen/PyRLA as inspiration, although more features and test suites have been added.

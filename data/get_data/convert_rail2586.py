@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import scipy
 from scipy.io import loadmat
+from scipy.sparse import save_npz
 
 
 if __name__ == "__main__":
@@ -20,7 +21,8 @@ if __name__ == "__main__":
     matrix = scipy.io.loadmat(inputFileName)
     print(matrix)
     data = matrix['X']
-    X = data.tocoo()
+    X = data
     print("Shape of the dataset: {}".format(X.shape))
     print("Type of data: {}".format(type(X)))
-    np.save(outputFileName, X)
+    print(X[:10,:4])
+    save_npz(outputFileName, X.tocoo())

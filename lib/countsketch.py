@@ -98,10 +98,10 @@ class CountSketch(Sketch):
             self.nonzero_data = data.data
             self.sparse_bool = True
         else:
-            # X_coo = coo_matrix(self.data)
-            # self.nonzero_rows = X_coo.row
-            # self.nonzero_cols = X_coo.col
-            # self.nonzero_data = X_coo.data
+            X_coo = coo_matrix(self.data)
+            self.nonzero_rows = X_coo.row
+            self.nonzero_cols = X_coo.col
+            self.nonzero_data = X_coo.data
             self.sparse_bool = False
         self.timing = timing
 
@@ -116,14 +116,13 @@ class CountSketch(Sketch):
         # else:
         #     summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
         #     return summary
-        if self.sparse_bool:
-            print("Using sparse method")
-            summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
-            return summary
-        else:
-            print("Using dense method")
-            summary = countSketch_dense(data, self.sketch_dimension)
-            return summary
+        #if self.sparse_bool:
+        summary = _countSketch_fast(self.nonzero_rows, self.nonzero_cols, self.nonzero_data, self.n, self.d, self.sketch_dimension)
+        return summary
+        # else:
+        #     print("Using dense method")
+        #     summary = countSketch_dense(data, self.sketch_dimension)
+        #     return summary
 
     #
     # def sketch_memory(self,data):
