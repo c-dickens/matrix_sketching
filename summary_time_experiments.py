@@ -97,6 +97,9 @@ def experiment_summary_time_vs_sparsity(n_rows, n_cols, n_trials, sketch_size, d
     return CWT_time, SRHT_time
 
 def full_summary_times_and_plots(row_list, column_list):
+    '''This is a wrapper to do the above `experiment_summary_time_vs_sparsity`
+    experiment over the entire parameter grid as defined above'''
+
     results = {
         "CountSketch" : {},
         "SRHT"        : {}
@@ -157,9 +160,9 @@ def experiment_summary_distortion_vs_aspect_ratio(n_rows, n_trials, sketch_size=
     '''Experiment to see how distortion varies for a fixed sketch size over
     different aspect ratios.'''
     max_num_cols = np.int(n_rows/2)
-    cols = np.concatenate((np.asarray([10,100,250,500],dtype=np.int),np.linspace(1000,
-                           max_num_cols,max_num_cols/1000,dtype=np.int)))
-    #cols = [10,50,75,100,250,500,750,1000,1500,2000,2500]
+    #cols = np.concatenate((np.asarray([10,100,250,500],dtype=np.int),np.linspace(1000,
+    #                       max_num_cols,max_num_cols/1000,dtype=np.int)))
+    cols = [10,50,75,100,250,500,750,1000,1500,2000,2500, 5000]
     print(cols)
     # output dicts
     distortions = {sketch : {} for sketch in sketch_functions.keys()}
@@ -180,7 +183,7 @@ def experiment_summary_distortion_vs_aspect_ratio(n_rows, n_trials, sketch_size=
             #    continue
             approx_factor = 0
             for trial in range(n_trials):
-                print("Testing {} with {},sketch_size {}, trial: {}".format(d,sketch,my_sketch_size, trial))
+                print("Sketch: {}, testing {} cols with {} sketch_size, trial: {}".format(sketch, d,my_sketch_size, trial))
                 summary = sketch_functions[sketch](data=A, sketch_dimension=my_sketch_size)
                 S_A = summary.sketch(A)
                 approx_norm = np.linalg.norm(S_A@x,ord=2)**2
@@ -318,6 +321,8 @@ def experiment_summary_time_distortion_real_data():
                 results[data][sketch_method][factor]["total time"] = mean_total_time
                 results[data][sketch_method][factor]["error"] = mean_distortion
     np.save("figures/real_data_summary_time.npy", results)
+    with open('figure/real_data_summary_time.json', 'w') as outfile:
+        json.dump(results, outfile)
     return results
 
 ### Plotting functions:
@@ -390,16 +395,16 @@ def plotting_distortion(distortion_results,n_rows=None,sketch_size=None):
 def main():
     ######### Script setup parameters ############
     # NB. Read from file in future
-    summary_time_start = default_timer()
-    full_summary_times_and_plots(param_grid['rows'], param_grid['columns'])
-    summary_time_end = default_timer() - summary_time_start
-    print("Script time: ", summary_time_end)
+    # summary_time_start = default_timer()
+    # full_summary_times_and_plots(param_grid['rows'], param_grid['columns'])
+    # summary_time_end = default_timer() - summary_time_start
+    # print("Script time: ", summary_time_end)
 
 
     ### COMPLETED EXPERIMENTS
-    # distortions_to_plot = experiment_summary_distortion_vs_aspect_ratio(10000,20)
-    # np.save("figures/distortion_vs_cols.npy", distortions_to_plot)
-    # plotting_distortion(distortions_to_plot,10000,1.5)
+    distortions_to_plot = experiment_summary_distortion_vs_aspect_ratio(25000,param_grid['num trials'])
+    np.save("figures/distortion_vs_cols.npy", distortions_to_plot)
+    plotting_distortion(distortions_to_plot,25000,param_grid['num trials'])
 
     # real_data_summary_time = experiment_summary_time_distortion_real_data()
     # np.save("figures/real_data_summary_time.npy", real_data_summary_time)
