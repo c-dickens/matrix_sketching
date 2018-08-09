@@ -43,6 +43,10 @@ datasets.
 - `rail2586` - Taken from Florida Sparse Matrix Repo.  Download MATLAB file and
 save `X = X = (Problem.A)'  `.  Convert `.mat` to a `.txt` so others can
 reproduce the results.
-
+_to try_
+- `landmark` - from Florida collection
+- `specular` - as above
+- `abtaha2` - as above
+- `Rucci1` - as above (take sample of columns)
 ### Credits
 I have used code from https://bitbucket.org/vegarant/fastwht to construct the SRHT and used https://github.com/wangshusen/PyRLA as inspiration, although more features and test suites have been added.
