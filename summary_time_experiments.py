@@ -16,6 +16,7 @@ from lib import ClassicalSketch
 import datasets_config
 from joblib import Parallel, delayed
 from my_plot_styles import plotting_params
+from experiment_parameter_grid import param_grid
 
 
 import matplotlib.pyplot as plt
@@ -27,18 +28,18 @@ sketch_functions = {"CountSketch": countsketch.CountSketch,
                     "SRHT" : srht.SRHT,
                     "Gaussian" : gaussian.GaussianSketch}
 
-param_grid = {
-        'num trials' : 5,
-        'rows' : [10000, 25000, 50000, 100000],#, 100000,250000],
-        'columns' : [10,50,100, 500, 1000],#, 100, 500, 1000],
-        'sketch_factors' : 5,
-        'density' : np.linspace(0.1,1.0, num=10)
-    }
+# param_grid = {
+#         'num trials' : 5,
+#         'rows' : [10000, 25000, 50000, 100000],#, 100000,250000],
+#         'columns' : [10,50,100, 500, 1000],#, 100, 500, 1000],
+#         'sketch_factors' : 5,
+#         'density' : np.linspace(0.1,1.0, num=10)
+#     }
 
-# nb. the marker styles are for the plots with multiple sketch settings.
-my_markers = ['.', 's', '^', 'v', 's', 'D', 'x', '+', 'o', '*']
-col_markers = {param_grid['columns'][i]: my_markers[i] for i in range(len(param_grid['columns']))}
-print(col_markers)
+# # nb. the marker styles are for the plots with multiple sketch settings.
+# my_markers = ['.', 's', '^', 'D', 'x', '+', 'V', 'o', '*']
+# col_markers = {param_grid['columns'][i]: my_markers[i] for i in range(len(param_grid['columns']))}
+# print(col_markers)
 
 # plotting_params = {"CountSketch" : {"colour" : "b",
 #                                     "line_style" : '-',
@@ -410,7 +411,8 @@ def main():
     # real_data_summary_time = experiment_summary_time_distortion_real_data()
     # np.save("figures/real_data_summary_time.npy", real_data_summary_time)
     # print(json.dumps(real_data_summary_time,indent=4))
-    
+    pass
+
 
 if __name__ == "__main__":
     main()

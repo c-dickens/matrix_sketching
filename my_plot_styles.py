@@ -2,7 +2,7 @@
 file containing the plotting information for matplotlib functions.
 Includes line styles, colours etc for each of the sketching methods.
 '''
-
+from experiment_parameter_grid import param_grid
 
 plotting_params = {"CountSketch" : {"colour" : "b",
                                     "line_style" : '-',
@@ -18,3 +18,8 @@ plotting_params = {"CountSketch" : {"colour" : "b",
                     "Exact" : {"colour" : "mediumspringgreen",
                                "marker" : "^"}
                                   }
+
+# nb. the marker styles are for the plots with multiple sketch settings.
+my_markers = ['.', 's', '^', 'D', 'x', '+', 'V', 'o', '*']
+col_markers = {param_grid['columns'][i]: my_markers[i] for i in range(len(param_grid['columns']))}
+print(col_markers)

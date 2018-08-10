@@ -272,16 +272,16 @@ class SRHT(Sketch):
 
     def sketch(self, data):
         #S = srht_transform(data, self.sketch_dimension)
-        if self.timing:
-            start = default_timer()
-            S = srht_transform1(data, self.sketch_dimension)
-            #S = (fast_srft(data.T, self.sketch_dimension)).T
-            end = default_timer() - start
-            return S, end
-        else:
-            S = srht_transform1(data, self.sketch_dimension)
-            #S = (fast_srft(data.T, self.sketch_dimension)).T
-            return S
+        # if self.timing:
+        #     start = default_timer()
+        #     S = srht_transform1(data, self.sketch_dimension)
+        #     #S = (fast_srft(data.T, self.sketch_dimension)).T
+        #     end = default_timer() - start
+        #     return S, end
+        # else:
+        S = srht_transform1(data, self.sketch_dimension)
+        #S = (fast_srft(data.T, self.sketch_dimension)).T
+        return S
 
     # def sketch_product(self, first_data, second_data):
     #     '''
