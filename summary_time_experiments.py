@@ -15,6 +15,7 @@ from lib import countsketch, srht, gaussian, classical_sketch
 from lib import ClassicalSketch
 import datasets_config
 from joblib import Parallel, delayed
+from my_plot_styles import plotting_params
 
 
 import matplotlib.pyplot as plt
@@ -39,20 +40,20 @@ my_markers = ['.', 's', '^', 'v', 's', 'D', 'x', '+', 'o', '*']
 col_markers = {param_grid['columns'][i]: my_markers[i] for i in range(len(param_grid['columns']))}
 print(col_markers)
 
-plotting_params = {"CountSketch" : {"colour" : "b",
-                                    "line_style" : '-',
-                                    "marker" : "o" },
-                   "SRHT" : {"colour" : "k",
-                             "marker" : "s",
-                             "line_style" : ':'},
-                   "Gaussian" : {"colour" : "r",
-                                 "marker" : "v",
-                                 "line_style" : "-."},
-                   "Classical" : {"colour" : "m",
-                                  "marker" : "*"},
-                    "Exact" : {"colour" : "mediumspringgreen",
-                               "marker" : "^"}
-                                  }
+# plotting_params = {"CountSketch" : {"colour" : "b",
+#                                     "line_style" : '-',
+#                                     "marker" : "o" },
+#                    "SRHT" : {"colour" : "k",
+#                              "marker" : "s",
+#                              "line_style" : ':'},
+#                    "Gaussian" : {"colour" : "r",
+#                                  "marker" : "v",
+#                                  "line_style" : "-."},
+#                    "Classical" : {"colour" : "m",
+#                                   "marker" : "*"},
+#                     "Exact" : {"colour" : "mediumspringgreen",
+#                                "marker" : "^"}
+#                                   }
 
 
 def experiment_summary_time_vs_sparsity(n_rows, n_cols, n_trials, sketch_size, densities):
@@ -402,14 +403,14 @@ def main():
 
 
     ### COMPLETED EXPERIMENTS
-    distortions_to_plot = experiment_summary_distortion_vs_aspect_ratio(25000,param_grid['num trials'])
-    np.save("figures/distortion_vs_cols.npy", distortions_to_plot)
-    plotting_distortion(distortions_to_plot,25000,param_grid['num trials'])
+    # distortions_to_plot = experiment_summary_distortion_vs_aspect_ratio(25000,param_grid['num trials'])
+    # np.save("figures/distortion_vs_cols.npy", distortions_to_plot)
+    # plotting_distortion(distortions_to_plot,25000,param_grid['num trials'])
 
     # real_data_summary_time = experiment_summary_time_distortion_real_data()
     # np.save("figures/real_data_summary_time.npy", real_data_summary_time)
     # print(json.dumps(real_data_summary_time,indent=4))
-
+    
 
 if __name__ == "__main__":
     main()
