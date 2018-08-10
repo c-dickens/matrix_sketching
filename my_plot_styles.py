@@ -15,11 +15,11 @@ plotting_params = {"CountSketch" : {"colour" : "b",
                                  "line_style" : "-."},
                    "Classical" : {"colour" : "m",
                                   "marker" : "*"},
-                    "Exact" : {"colour" : "mediumspringgreen",
+                    "Exact" : {"colour" : "teal",
                                "marker" : "^"}
                                   }
 
 # nb. the marker styles are for the plots with multiple sketch settings.
-my_markers = ['.', 's', '^', 'D', 'x', '+', 'V', 'o', '*']
+my_markers = ['.', 's', '^', 'D', 'x', '+', 'V', 'o', '*', 'H']
 col_markers = {param_grid['columns'][i]: my_markers[i] for i in range(len(param_grid['columns']))}
-print(col_markers)
+#print(col_markers)
