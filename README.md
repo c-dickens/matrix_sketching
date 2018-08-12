@@ -3,6 +3,21 @@
 The aim of the project is to be a fully reproducible and usable library for various matrix sketching tasks.
 The initial problem is to investigate how different random transforms can be used as preconditioners for Convex Constrained Least Squares problems (CCLSQ), particularly with a view to exploiting sparse embeddings for fast-to-compute preconditioners.
 
+## Installation:
+1. `git clone` the repo
+2. `cd matrix_sketching`
+3. `pip install -r requirements.txt`
+4. `cd matrix_sketching/lib`
+5. `git clone https://bitbucket.org/vegarant/fastwht.git` --> then run install
+in here by `cd python`, `python setup.py`, `python test.py`
+6. Get the directory path for `fastwht/python` which should be `your_path_name =
+*/matrix_sketching/lib/fastwht/python`
+7. Find `.bash_profile` or equivalent and add `export PYTHONPATH=$PYTHONPATH:your_path_name`,
+at the final line of the `bash_profile`, finally save then `source .bash_profile`.
+8. Open ipython, do `import sys --> sys.path` and check that `your_path_name`
+is displayed.
+9. Go back to the `matrix_sketching` directory and run the tests.
+
 
 ## Roadmap:
 1. ~~Get IHS LASSO solver working.~~ [26/07/2018] DONE - now incorporate into class based method.
