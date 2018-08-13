@@ -1,0 +1,673 @@
+\documentclass[twoside]{article}
+%\usepackage{aistats2018}
+ % If your paper is accepted, change the options for the package
+% aistats2018 as follows:
+%
+%\usepackage[accepted]{aistats2018}
+
+%
+% This option will print headings for the title of your paper and
+% headings for the authors names, plus a copyright note at the end of
+% the first column of the first page.
+
+%% Useful packages
+\usepackage{a4wide}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\usepackage{color}
+\usepackage[normalem]{ulem}
+\graphicspath{{../figures/}}
+\newcommand{\prob}{\mathbb{P}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\V}{\mathbf{Var}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\mat}[1]{\boldsymbol{#1}}
+\newcommand{\nnz}[1]{\text{nnz}(#1)}
+
+\theoremstyle{definition}\newtheorem{thm}{Theorem}[section]
+\theoremstyle{definition}\newtheorem{mydef}[thm]{Definition}
+\theoremstyle{definition}\newtheorem{rem}[thm]{Remark}
+\theoremstyle{definition}\newtheorem{prop}[thm]{Proposition}
+\theoremstyle{definition}\newtheorem{example}[thm]{Example}
+\theoremstyle{definition}\newtheorem{claim}[thm]{Claim}
+\theoremstyle{definition}\newtheorem{Qu}[thm]{Question}
+\theoremstyle{definition}\newtheorem{Lemma}[thm]{Lemma}
+\theoremstyle{definition}\newtheorem{Cor}[thm]{Corollary}
+\theoremstyle{definition}\newtheorem{Fact}[]{Fact}
+
+%% Useful commands
+\DeclareMathOperator*{\argmin}{argmin}
+
+%\author{Author, A.}
+\title{A Comparison of Embedding Methods for Least Squares Regression
+over Convex Sets}
+\author{Charlie Dickens}
+\date{}
+
+
+\begin{document}
+\maketitle
+
+% If your paper is accepted and the title of your paper is very long,
+% the style will print as headings an error message. Use the following
+% command to supply a shorter title of your paper so that it can be
+% used as headings.
+%
+%\runningtitle{I use this title instead because the last one was very long}
+
+% If your paper is accepted and the number of authors is large, the
+% style will print as headings an error message. Use the following
+% command to supply a shorter version of the authors names so that
+% they can be used as headings (for example, use only the surnames)
+%
+%\runningauthor{Surname 1, Surname 2, Surname 3, ...., Surname n}
+
+%\twocolumn[
+
+%\aistatstitle{Sparse Embeddings for Least Squares Regression with Convex Constraints}
+
+%\aistatsauthor{ Author 1 \And Author 2 \And  Author 3 }
+
+%\aistatsaddress{ Institution 1 \And  Institution 2 \And Institution 3 }
+%]
+
+\begin{abstract}
+  Matrix sketching is a dimensionality reduction technique to make large datasets
+  more manageable and has recently been appleid to solving a variety of
+  convex constrained regression problems.
+  There are two well-known sketching methods which can solve such
+  regression problems; one being a sketch-and-
+  solve type approach, and the other being an iterative scheme known as \textit{
+  Iterative Hessian Sketching}.
+  First we show that the
+  Count Sketch \cite{clarkson2013low}, fits ideally within the iterative method
+  and then give a suite of experiments to compare the performance of
+  the CountSketch compared to competing methods.
+  Our empirical results demonstrate that the Count Sketch is an extremely efficient
+  sketch which offers \textit{computational} improvements over other sketching
+  methods in this setup.
+  \textit{Add more subject to experimental conclusion.}
+\end{abstract}
+
+\section{Introduction} \label{sec: intro}
+\input{introduction}
+
+
+\section{Preliminaries} \label{sec: preliminaries}
+
+Let $A \in \R^{n \times d}$ be the input data matrix and let $m$ be the
+desired projection dimension.
+We define the families of random matrices $S \in \R^{m \times n}$ that we will
+study:
+\begin{itemize}
+  \item \textit{Gaussian} sketch: $G_{ij} \sim N(0,1)$ and the matrix
+  $S = G/\sqrt{m}$
+  \item \textit{Subsampled Randomized Hadamard Transform (SRHT)}: $S = PHD$
+  where $D$ is a diagonal matrix with $D_{ii} \in \{ \pm 1 \}$ each with
+  probability $1/2$ independently.
+  The matrix $H$ is the recursively defined Hadamard Transform and $P$ is
+  a matrix
+  which samples rows uniformly at random.
+  \item{\textit{TO INCLUDE: Sparse Johnson Lindenstrauss Transform (SJLT)}:}
+  \item \textit{CountSketch}: initialise $S = \mathbf{0}_{m,n}$ and for every
+  column $i$ of $S$ choose a row $h(i)$ uniformly at random.
+  Set $S_{h(i),j} = \pm 1$ with probability $1/2$.
+\end{itemize}
+
+\textbf{Computational Complexity:}
+Each of the above described random projections defines a linear map from $\R^n
+\to \R^m$ which naively would take $O(mnd)$.
+Despite this, only the Gaussian sketch suffers from the matrix multiplication
+time cost because the SRHT exploits the fast Hadamard transform which takes
+$O(nd \log n)$ time as it is defined recursively.
+Additionally, the CountSketch can be computed by streaming through the matrix
+$A$: upon observing an entry $A_{ij}$, the value of a hash bucket defined
+by the function $h$ is then updated with either $\pm A_{h(i),j}$ and hence
+the time
+to compute the CountSketch transform is roughly $O(\nnz{A})$.
+In light of this the matrix $SA$ can be viewed both as a linear transform but
+also a method of summarising the input data to a small space representation.
+
+\subsection{Setup}
+Throughout we consider examples of overconstrained regression in the form of
+a data matrix $A \in \R^{n \times d}$ and target vector $b \in \R^{n}$ with
+$n \gg d$.
+Also given is a set of convex constraints $\mathcal{C}$ and the task is to
+find the \textit{optimal estimator}:
+
+\begin{equation}
+  x_{OPT} = \argmin_{x \in \mathcal{C}} \frac{1}{2} \|Ax-b\|_2^2.
+\end{equation}
+
+We consider two popular models of sketching as well as different types
+of random projections.
+The two methods are know as \textit{sketch-and-solve} and \textit{iterative
+Hessian sketching} (IHS) which we now outline.
+For a random projection $S$, the sketch-and-solve approach outputs estimates
+of the form:
+
+\begin{equation} \label{eq: sketch-and-solve}
+  \hat{x}_S = \argmin_{x \in \mathcal{C}} \frac{1}{2} \|S(Ax-b)\|_2^2.
+\end{equation}
+\noindent In contrast, the IHS method instead sketches in the following manner:
+
+\begin{equation} \label{eq: ihs}
+  x^{t+1} = \argmin_{x \in \mathcal{C}}  \frac{1}{2} \|S^{t+1} A
+  (x - x^t) \|^2 - \langle A^T (y - Ax^t), x - x^t \rangle.
+\end{equation}
+
+The reason for the differing approaches is due to the following notions of
+approximation that we introduce as \textit{cost} and \textit{solution}
+approximation.
+Let $f(x) = \frac{1}{2}\|Ax-b\|_2^2$ for input parameters $(A,b)$ and let
+$x_{OPT}$ denote the optimal solution.
+We also use the following notation: $\|x\|_A = \frac{1}{\sqrt{n}}\|Ax\|_2$.
+
+\begin{mydef} \label{def: cost-approx}
+  An algorithm which outputs $\hat{x}$ is a $(1 + \eps)$ \textit{cost
+   approximation} if $f(\hat{x}) \le (1+\eps) f(x_{OPT})$.
+\end{mydef}
+
+\begin{mydef} \label{def: sol-approx}
+  An algorithm which returns $\hat{x}$ such that $\|x_{OPT} - \hat{x}\|_A
+  \le \eps \|x_{OPT}\|_2$ is referred to as a $\eps$-\textit{solution
+  approximation} algorithm.
+\end{mydef}
+
+Inspecting Equations (\ref{eq: sketch-and-solve}) and (\ref{eq: ihs}) one
+sees that that a key quantity we need to understand is the concept
+of a \textit{subspace embedding} which measures the distortion induced by the
+data summary on vectors.
+Each of the sketches defined in Section \ref{sec: intro} achieves the subspace
+embedding criterion which is summarised in Theorem
+\ref{thm: subspace-embedding-dims}.
+
+\begin{mydef} \label{def: subspace-embedding}
+  A matrix $S \in \R^{m \times n}$ is a \textit{$(1 \pm \eps)$-subspace embedding}
+  for the column space of a matrix $A \in \R^{n \times d}$ if for all vectors
+  $x \in \R^d, \|SAx\|_2^2 = (1 \pm \eps)\|Ax\|_2^2$.
+\end{mydef}
+
+\begin{rem} \label{rem: subspace-embedding-remark}
+  $\log(1/\delta)$ failure probability dependence compared to $O(1/\delta)$
+  and the theoretically increased projection dimension for subspace embedding.
+\end{rem}
+
+
+
+\begin{thm}[\cite{woodruff2014sketching}] \label{thm: subspace-embedding-dims}
+  Let $A \in \R^{n \times d}$ have full column rank.
+  Let $S \in \R^{m \times n}$ be sampled from one of the Gaussian, SRHT, or
+  CountSketch distributions.
+  Then to achieve the subspace embedding property with probability
+  $1 - \delta$ we require:
+  $m = O(\eps^{-2}(d + \log(1/\delta)))$ for the Gaussian sketch,
+  $m = \Omega(\eps^{-2}(\log d) (\sqrt{d} + \sqrt{n})^2)$ for the SRHT,
+  $m = O(d^2/(\delta \eps^2))$ for the CountSketch.
+\end{thm}
+
+
+
+\textbf{Questions to answer}:
+\begin{itemize}
+  \item Why solution approimation?
+  \item IHS with one iteration.
+  \item Order one bound error comment from IHS Eqn 5
+  \item Comments on the IHS algorithm, iterations etc.
+  \item \sout{Hesian Sketch as preconditioner}
+  \item Complexity arguments
+  \item need $d + \log n$ in each round for IHS.
+\end{itemize}
+
+\color{red}
+It has also been argued in \cite{wang2017sketching} that IHS is acting as
+a preconditioned approach to the Newton method.
+Indeed, for $f(x) = \frac{1}{2} \|Ax-b\|_2^2$ we see that $\nabla f(x) =
+-A^T(b-Ax)$.
+In the iterates, the task is to find $u' = \argmin_{x \in \mathcal{C}}
+\frac{1}{2}\|SAu\|_2^2 - u^TA^T(b-Ax_t)$.
+By solving the unconstrained problem one would obtain $u' = (A^TS^TSA)^{-1}
+A^T(b-Ax_t)$ and thus, $u' = - \tilde{H}^{-1} \nabla f(x_t)$.
+Then taking $x^{t+1} = \mathcal{P}_{\mathcal{C}} (x^t + u')$ we obtain
+$x^{t+1} = \mathcal{P}_{\mathcal{C}} (x^t - \tilde{H}^{-1}\nabla f(x_t))$
+which is a projected Newton step with a sketched approximation to
+the Hessian.
+\color{black}
+
+\subsection{Motivating the IHS: Sketch-and-Solve Suboptimality}
+
+For a variety of the results we asume the standard Gaussian design.
+stating that $y = A x^* + \omega$.
+Here, the data $A$ is fixed and there exists an unknown ground truth
+vector $x^*$ belonging to some compact $\mathcal{C}_0 \subseteqq \mathcal{C}$.
+In addition, the error vector $\omega$ has entries are drawn
+by $\omega_i \sim N(0, \sigma^2)$.
+In order to compare the output of an algorithm, $\hat{x}$, to that of the
+`exact` (optimal / best ??!!) estimator, $x_{OPT}$ Pilanci and Wainwright
+showed that the expected solution error could be bounded above as a function
+of the input size and from below as
+In addition, it was shown that any estimator $x'$ which observes the pair
+$(SA, Sb)$ is provably suboptimal in the sense outlined in Theorem
+\ref{thm: clsq-lower-bound}.
+The key condition is that a sketching matrix has the following
+property (in spectral norm):
+
+\begin{equation} \label{eq: sketch-spectral-property}
+  \| \E \left[ S^T (S S^T)^{-1} S \right] \|_2 \le \eta \frac{m}{n}
+\end{equation}
+
+\begin{thm}[\cite{pilanci2016iterative}] \label{thm: clsq-lower-bound}
+  Let $S \in \R^{m \times n}$ be a sketching matrix which satisfies
+  Equation (\ref{eq: sketch-spectral-property}), then any estimator
+  based on observing $(SA, Sb)$ has solution error lower bounded as:
+
+  \begin{equation}
+    \sup_{x^* \in \mathcal{C}_0} \E_{S,\omega} [\|x^* - x'\|_A^2 ]
+     = \Omega \left(
+    \frac{\sigma^2}{\eta \min(m,n)} \right).
+  \end{equation}
+\end{thm}
+
+\begin{rem}
+  We note that the constants for Theorem \ref{thm: clsq-lower-bound} are
+  explicitly known and are simply the factor $\log(0.5 M_{0.5})/128\eta$
+  which we omit for brevity.
+  Note that $M_{0.5}$ is the $0.5$-packing number of $\mathcal{C}_0$ in
+  the semi-norm $\| \cdot \|_A$.
+\end{rem}
+Although we omit the details (which can be found in \cite{pilanci2016iterative})
+we note that the CountSketch satisfies the spectral condition (\ref{eq: sketch-spectral-property})
+and as such, suffers from the same suboptimality as the previously used
+sketching methods in the sketch-and-solve model.
+This is proved in Theorem \ref{thm: spectral-theorem} and hence motivates the
+novel use of CountSketch within the IHS framework rather than the straightforward
+sketch-and-solve model.
+
+\subsection{Iterative Hessian Sketch}
+\begin{enumerate}
+  \item{Convergence theorems}
+  \item{Sketch dimensions}
+  \item{Number of iterations}
+\end{enumerate}
+
+\begin{prop}[\cite{pilanci2016iterative}] \label{prop: ihs-error-bound}
+  For any set $\mathcal{C}$ containing $x^*$, the constrained least-squares
+  estimate $x_{OPT}$ has prediction error upper bounded as:
+
+  \begin{equation}
+    \E \|x_{OPT} - x^* \|_A^2 \le c \left(\eps_n(\mathcal{\bar{K}}) +
+    \frac{\sigma^2}{n}\right).
+  \end{equation}
+  For the unconstrained case we have the prediction error is $O(\sigma^2 d/n)$.
+\end{prop}
+
+
+
+\subsection{Experimental Outline}
+
+\begin{enumerate}
+  \item{\textbf{Summary Time vs Data Density.}  Compare running time for the
+  summary computation as a function of data density.
+  Do this on synthetic and real datasets.}
+  \item{\textbf{Distortion.}  Given a sketch of fixed size, the distortion be
+  well-understood.  Again refer to real and synthetic datasets.}
+  \item{\textbf{Preliminary IHS experiments.}Do we lose anything by using the
+  CountSketch in the IHS scheme? Compare solution error, prediction error}
+  \item{\textbf{Case Study - LASSO.} Solve a LASSO
+  instance on large datasets, how does the approximation compare to the SKLEARN
+  implementation and the sketch-and-solve method}
+\end{enumerate}
+
+\section{CountSketch in IHS: Theory}
+The proofs detailing the structural results of why we can use the CountSketch
+within the IHS are given in Appendix \ref{sec: countsketch-proofs} however we
+outline the key details here.
+First we need that the sketches are zero mean and have identity covariance
+$\E(S^TS) = I_{n}$ which is shown in Lemma \ref{lem: covariance_matrix}.
+Two further properties are required for the error bounds of the IHS.
+
+\begin{mydef}
+  The \textit{tangent cone} is the following set:
+  \begin{equation}
+    K = \{ v \in \R^d : v = tA(x-x_{OPT}), ~ t \ge 0, x \in \mathcal{C}\}
+  \end{equation}
+\end{mydef}
+\noindent We note that the residual error vector for an approximation $\hat{x}$
+belongs to this set as $u=A(\hat{x} - x_{OPT})$.
+Let $X = K \cap \mathcal{S}^{n-1}$ where $\mathcal{S}^{n-1}$ is the set of $n$-
+dimensional vectors which have unit Euclidean norm.
+The quanitites we need to understand are:
+
+\begin{align}
+  Z_1 &= \inf_{u \in X} \|Su\|_2^2 \\
+  Z_2 &= \sup_{u \in X} | u^T S^T S v - u^T v |.
+\end{align}
+\noindent Here, $v$ denotes a fixed unit-norm $n$-dimensional vector and assume
+that $S$ is a subspace embedding for the column space of $A$.
+For the IHS conditions to hold it is required that $Z_1 \ge 1-\eps$ and
+$Z_2 \le \eps/2$ for $\eps \in (0,1/2)$.
+Since $ u \in K \subseteq \text{col}(A)$ and then by the subspace embedding
+property we have that $\|Su\|_2^2 = (1 \pm \eps)\|u\|_2^2 = (1 \pm \eps)$ and
+hence $Z_1  \ge 1-\eps$ as required.
+The second property follows from approximate matrix product with sketching
+matrices:
+indeed, for a matrix $X$ with only one nonzero $X_{ij}$ then $\|X\|_F = (X_{ij}^2)^{1/2}$
+which is exactly $|X_ij|$.
+Pad $u$ and $v$ with zeros until they are both $d \times k$ dimensional, to get
+$\mat{u}$ and $\mat{v}$ respectively so that we can now apply the matrix product
+(Theorem 13 of \cite{woodruff2014sketching} but originally \cite{kane2014sparser}).
+This gives $\|\mat{u}^T S^TS \mat{v} - \mat{u}^T\mat{v}\|_F \le 3 \eps \|\mat{u}\|_F \|\mat{v}\|_F$
+for $\eps \in (0,1/2)$.
+Now, by rescaling $\eps$, recalling that the definitions of $\mat{u},\mat{v},u,v$
+mean $\|\mat{u}\|_F = 1, \|\mat{v}\|_F=1$ and then error difference has exactly
+one element so therefore reduces to the absolute value of that element, which is
+exactly $| u^T S^T S v - u^T v |$ and hence $Z_2 \le \eps$.
+Note that although the condition on $Z_2$ looks like a Johnson Lindenstrauss
+Transform property, we cannot immediately invoke that for the CountSketch in the
+general case due to a lower bound on the column sparsity needed for  a JLT
+(discussion of this can be found in \cite{woodruff2014sketching} between Theorems
+7 and 8).
+Coupled with the fact that the rows of a CountSketch matrix $S$ are sub-Gaussian,
+we are now free to use the CountSketch within the IHS framework.
+
+
+
+
+
+\subsection{Implementation Details}
+
+All of our experiments are performed in the Anaconda distribution of Python
+with only a few extra libraries.
+We exploit a fast library for computing the Hadamard
+Transform\footnote{https://bitbucket.org/vegarant/fastwht} and the Numba
+library\footnote{https://numba.pydata.org/} to accelerate the Python code
+so that it runs at comparable speed.
+
+
+
+\section{Warm up: initial comparisons}
+
+As outlined in Section \ref{sec: preliminaries} the key quantity that we would
+like to understand is the subspace embedding.
+The central questions we seek to answer are: (1) whether the time complexity
+in practise matches the theory, (2) how large should the projection
+dimension be in order to obtain small error (3) the CountSketch
+theoretically requires a larger projection to obtain the subspace embedding
+property, is this reflected in practise?
+
+
+
+
+
+% \begin{figure}
+%   \includegraphics[scale=0.25,keepaspectratio]{summary_time_density_10000}
+%   \caption{Time to compute summaries for $n=100000$, $d$ given in legend next
+%   to sketch name and sketch dimension $m = 5d$ used.} \label{fig: summary-times-vs-sparsity}
+% \end{figure}
+
+\noindent\textbf{Time Complexity compared to sparsity.} The CountSketch takes
+$O(\nnz{A})$ time to construct a subspace embedding
+whereas the SRHT requires $O(nd \log n)$.
+Although the SRHT does not scale with the sparsity of the data, for the
+practitioner it
+will be of interest to know where, if any, there is a threshold at which one of
+the transforms is preferable from the perspective of time cost.
+To test this claim we generated random matrices of size $n$ varying from
+$10000, 25000, 50000, 100000$ and $d$ ranging from $10,50,100,500,1000$
+with a \textit{density} parameter $\rho$ which was varied from 0 to 1.
+A projection dimension of $5d$ was chosen for the summarisation as this offered
+a good tradeoff between compute time and accuracy which will be discussed in the
+succeeding section.
+Sparsity, $s$ is measured as the fraction of nonzero entries in the matrix and
+then density is taken as $\rho = 1 - s$.
+Only the CountSketch and SRHT are tested because the explicit matrix
+multiplication for the Gaussian sketch is exceedingly high.
+As seen in Figure \ref{fig: summary-time-100000}, both transforms scale
+consistently with the theory: the CountSketch has increased time to compute the
+summary as the density of the data increases and the SRHT is generally stable as
+the density varies.
+Interestingly, our implementations do not show a cross over point for corresponding
+settings of the parameters i.e for a fixed $(n,d,m)$ triple the time to compute the
+CountSketch summary is always a significant constant factor less than that for
+the SRHT summary.
+This behaviour is consistent across each of the setup values so only those for
+the setting $(n,d) = (.,.)$ are given here.
+In addition, the time benefit of using the CountSketch over the SRHT is reflected
+on the real datasets as well with the results given in Table
+\ref{table: real-data-subspace-embedding}
+where roughly equal distortions are found at a fraction of the time cost.
+
+\begin{figure}
+  \centering
+\includegraphics[scale=0.75,keepaspectratio]{summary_time_density_10000}
+        \caption{$n=100000$}
+        \label{fig: summary-time-100000}
+\end{figure}
+
+
+% \begin{figure}
+%     \centering
+%     \begin{subfigure}[b]{0.49\textwidth}
+%         \includegraphics[scale=0.45,keepaspectratio]{summary_time_density_10000}
+%         \caption{$n=100000$}
+%         \label{fig: summary-time-100000}
+%     \end{subfigure}
+%     \begin{subfigure}[b]{0.49\textwidth}
+%         \includegraphics[scale=0.425,keepaspectratio]{distortion_vs_cols}
+%         \caption{Distortion compared to number of columns}
+%         \label{fig: distortion-columns}
+%     \end{subfigure}
+%     ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc.
+%       %(or a blank line to force the subfigure onto a new line)
+% \end{figure}
+
+% Please add the following required packages to your document preamble:
+%
+\begin{table}[ht]
+\centering
+\begin{adjustbox}{width=1\textwidth}
+%\small
+
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+  \hline
+\multirow{2}{*}{Dataset} & \multirow{2}{*}{Dimensionality} & \multirow{2}{*}{Density $\nnz{A}/nd$} & \multicolumn{3}{c|}{CountSketch (time)} & \multicolumn{3}{c}{SRHT (time)} & \multicolumn{3}{c|}{CountSketch (error)} & \multicolumn{3}{c|}{SRHT (error)} \\
+                         &                                 &                          & $2d$          & $5d$         & $10d$         & $2d$        & $5d$       & $10d$       & $2d$          & $5d$          & $10d$          & $2d$        & $5d$        & $10d$       \\
+\hline
+YearPredictionsMSD       & $(515345,90)$                                &  1.0                        &    0.116         &   0.110          &  0.112          &  2.56         &  2.51        &   2.51        &  0.012           &   0.005          &    0.003           &   0.019        &   0.005        &  0.002         \\
+Rail2586                 &   $(923269, 2586)$                             &   0.003                       &  0.222           &  0.365           &  0.758             &  -         & -         & -           & 0.043             &  0.017             &  0.009            & -          & -           & -           \\
+California Housing       &  $(20000, 17)$                               &    0.76                      &   0.005          &  0.002           &   0.002          &  0.015         &  0.014        & 0.015          &   0.024          &  0.007           & 0.017       & 0.084          & 0.043         & 0.018 \\
+US Census     &                       &            &            &           &          &      &         &            &            &              &         &          &        \\
+\hline
+\end{tabular}
+\end{adjustbox}
+\caption{Comparison of CountSketch and SRHT on real datasets}
+\label{table: real-data-subspace-embedding}
+\end{table}
+
+\noindent\textbf{Error vs Sketch size/columns?}
+The CountSketch is noticeably faster than the SRHT (and we assume
+ faster
+than the Gaussian transform due to the explicit matrix product), the benefits
+enjoyed by the time saving will become immaterial if the error induced by the
+CountSketch is significantly higher.
+In this experiment we test... and show that the subspace embedding error from
+using the CountSketch is comparable to using both other methods.
+There appears to be slightly more variation in the errors from using CountSketch
+as opposed to the other methods and as such we need to check that this is not
+prohibitive in the IHS model and this is explored in Section
+\ref{sec: countsketch-ihs}.
+
+
+\section{CountSketch in the IHS framework} \label{sec: countsketch-ihs}
+
+Although the IHS approach was studied empirically in \cite{pilanci2016iterative}
+there was not a comparison of different sketching methods within the iterative
+procedure.
+This is of utmost importance to the practitioner because if one were to use a
+Gausian sketch at every iteration then a prohibitive $O(nmd)$ time cost
+would be inflicted per iteration.
+Similarly, if one posesses sparse data then it was not known how a projection
+which exploits sparsity behaves in comparison to the other sketching methods.
+As such, we seek to understand the performance of the sketching methods
+and compare the relative merits and tradeoffs.
+Although the CountSketch performs favourably compared to the SRHT from a time
+perspective, it does appear to have slightly more distortion variation in the
+subspace embedding condition compared to both other methods.
+Accordingly, one needs to understand whether this distortion is prohibitive in
+the IHS scheme when using the CountSketch compared to other methods.
+To aid our understanding of each of the sketching methods within the IHS we
+first
+reproduce some of the previous results from \cite{pilanci2016iterative} in order
+to understand how each of the sketches behave.
+This behaviour in this set of experiments is roughly similar to that found in
+\cite{pilanci2016iterative}, although on occasion we need slightly different
+parameter settings - this remains consistent with the theory, however.
+
+The experiments in this section use synthetic data $A \in \R^{n \times d}$
+whose entries are drawn from standard normal distribution.
+A ground truth vector $x^*$ is chosen at random and then standard Gaussian
+noise is added $\omega_i$ for $i=1, \ldots, n$.
+The given target vector is then $b = Ax^* + \omega$
+
+
+
+
+\textbf{Error compared to data size.}
+The first experiment seeks to understand how the error responds when the size of
+the data is increased.
+The dimensionality of the dataset $A$ is fixed at $d=10$ and then more samples
+are added with $n \in \{100 \times 2^i \text{ for } i \in \{3,4,\ldots,14\} \}$.
+The number of iterations is fixed at $N=1+\log n$ and a sketch size for the IHS
+is fixed at $m=5d$.
+The experiments are repeated (insert number) times and the mean has been taken.
+To maintain a comparison across a the same number of random projections, the
+sketch-and-solve model is instantiated with sketch dimension set at $m'=Nmd$.
+As shown in Figure \ref{fig: error-vs-row-dim}, the sketch-and-solve approach
+is a suboptimal estimator of the true solution and this is further reflected in
+the prediction error.
+Despite only a modest increase in the number of iterations as $n$ grows larger,
+the IHS estimates are approaching the optimal estimator as expected.
+All three methods descend to the error at a rate consistent with the theory
+(Proposition \ref{prop: ihs-error-bound}) and are each comparable with the
+optimal estimator.
+There appears to be little difference between the choice of random projection in
+this setup and the faster CountSketch performs comparably to the Gaussian
+ and
+SRHT sketches which provides the first evidence that a cheaper to compute
+projection may well prove fruitful.
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.75,keepaspectratio]{verify_ihs_error_num_rows}
+  \caption{Solution Error vs Row Dimension and Prediction Error vs Row Dimension}
+  \label{fig: error-vs-row-dim}
+\end{figure}
+
+
+\textbf{Solution Error vs Number of Iterations}
+For this experiment we sampled data as above with $(n,d) = (6000,200)$
+and tested sketch sizes $m = \gamma d$ for $\gamma = 4,6,8$.
+The IHS method was run for $T=5,10,15, \ldots, 40$ iterations and for each
+different sketch the error to the optimal estimator was measured (averaged
+over ... repeats).
+The results are displayed in Figure \ref{fig: ihs-sketch-errors}.
+All three methods converge geometrically towards the optimal solution with
+the rate increasing when larger $\gamma$ is used - this is illustrated in
+Figure \ref{fig: error-to-lsq}.
+The CountSketch follows a similar path to both other sketching methods
+with slightly more (but not a prohibitive amount of) variation.
+All three methods are relatively consistent in their performance however and
+from this perspective it does not appear that a particular sketch is preferable
+over any other.
+Simiarly, in Figure \ref{fig: error-to-truth} we see how quickly the sketches
+allow the IHS to converge to the optimal error between an estimator and the
+ground truth (nb. for this experiment it is roughly $\log \sqrt{200/6000}
+\approx -1.7$).
+Again, as expected, a larger $\gamma$ enables faster convergence but from
+this perspective the SRHT appears most stable with the least variation across
+the iterations: both other methods seem to oscillate roughly a small constant
+factor either side of the SRHT error.
+
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+    \centering
+        \includegraphics[scale=0.5,keepaspectratio]{verify_ihs_error_to_lsq}
+        \caption{Error to optimal estimator}
+        \label{fig: error-to-lsq}
+    \end{subfigure}%
+    \begin{subfigure}{0.49\textwidth}
+    \centering
+        \includegraphics[scale=0.5,keepaspectratio]{verify_ihs_error_to_truth}
+        \caption{Error to truth}
+        \label{fig: error-to-truth}
+    \end{subfigure}
+    \caption{Solution error (compared to optimal estimator) and Error to
+    ground truth vs number of
+    iterations in Figures \ref{fig: error-to-lsq} and \ref{fig:
+    error-to-truth}, respectively.
+    The constant to the right of the sketch method in the legend
+    is the sampling factor $\gamma$ of the sketch i.e. projection dimension
+    $m = \gamma d$.}
+    \label{fig: ihs-sketch-errors}
+\end{figure}
+
+
+
+
+\textbf{Error compared to dimensionality}
+
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.75,keepaspectratio]{verify_ihs_error_dimension}
+  \caption{Solution error compared to optimal estimator}
+  \label{fig: error-vary-columns}
+\end{figure}
+
+
+
+
+
+\subsection{Learning rate}
+
+\section{Subspace Embedding}
+
+\subsection{Time}
+Vary sparsity.
+\subsection{Space}
+
+\subsection{Distortion}
+
+
+
+\section{Case Study: LASSO}
+
+\subsection{Obtaining Machine Precision}
+
+\subsection{Learning Rate}
+
+\subsection{IHS as a fast approximate solver}
+
+\section{Case Study: SVM}
+
+
+\appendix
+
+\section{Structural Properties of CountSketch} \label{sec: countsketch-proofs}
+\input{count-sketch-properties}
+
+
+
+
+\bibliography{references}
+\bibliographystyle{plain}
+\end{document}

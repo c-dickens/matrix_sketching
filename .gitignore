@@ -9,11 +9,12 @@ lib/fastwht/
 **/.ipynb
 tests/timings.ipynb
 
-# Ignore the paper and figures directories
-paper
+# Ignore figures directory
 figures
 
-# except the following
+# ignore paper/ except the following
+!/paper
+paper/*
 !paper/sketching-convex-ols.tex
 !paper/introduction.tex
 !paper/count-sketch-properties.tex

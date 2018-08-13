@@ -1,0 +1,194 @@
+%!TEX root = main.tex
+
+The problem of handling the growing volume of data is of increasing
+importance, particularly in terms of designing theoretically attractive
+algorithms
+which are efficient for the practitioner.
+In light of this, matrix sketching has recently emerged as a method for
+ approximating certain
+linear algebra algorithms for popular data analysis primitives.
+The main idea is that properties of a data matrix can be well-understood
+through a
+smaller summary of the data which is much easier to use in computations and
+can offer huge computational savings.
+Let $A \in \R^{n \times d}$ be the input sample-by-feature matrix with
+associated target vector $b \in \R^n$ and assume that $n \gg d$.
+Additionally, let $\mathcal{C}$ denote a set of convex constraints and the
+task is to find
+
+\begin{equation} \label{eq: convex-ols-problem}
+  x_{OPT} = \argmin_{x \in \mathcal{C}} \frac{1}{2} \|Ax-b\|_2^2.
+\end{equation}
+\noindent In the large data setup we assume that $n$ is sufficiently large so
+that solving Equation (\ref{eq: convex-ols-problem}) exactly is not possible.
+As a result, one needs to exploit some notion of approximation to solve this
+problem efficiently.
+Two competing methods of approximation through matrix sketching are the
+ \textit{sketch-and-solve} and \textit{iterative Hessian sketching} models which we
+  detail below.
+
+
+
+\begin{itemize}
+  \item \textit{Sketch-and-solve}:
+  The sketch-and-solve approaches output estimates found by solving
+
+  \begin{equation}
+    \hat{x} = \argmin_{x \in \mathcal{C}} \| S(Ax - b) \|^2
+  \end{equation}
+  by sampling a random linear transformation $S \in \R^{m \times n}$ from a
+  sufficiently well-behaved distribution of matrices with $m \ll n$.
+  Now that $m$ is much smaller than $n$, the $m \times d$ dimensional problem
+  is small enough that it can be solved exactly.
+  In fact, for appropriately chosen $S$, one can show that the \textit{
+  cost} of a regression problem can be aproximated accurately in the sense
+  that $\| A  \hat{x} - b \|^2 \le (1 + \eps) \|A x_{OPT} - b\|^2$ where
+  $\eps$ is an accuracy parameter and the result holds with high constant
+  probability.
+  It is assumed that the projection dimension $m$ is chosen sufficiently small
+  relative to $n$ that the smaller problem is efficiently solvable and that
+  the main computational bottleneck is the time it takes to compute the
+  summary $SA$.
+  We detail the computational complexity of this approach in Section
+  \ref{sec: preliminaries}.
+
+  \item \textit{Iterative Hessian Sketching}:
+  This approach exploits the quadratic program formulation of Equation
+  (\ref{eq: convex-ols-problem}) and uses the random projections to accelerate
+  expensive computations in the problem setup.
+  In addition, one can argue that the summary $SA$ is acting as a preconditioner
+  for the original problem.
+  In contrast to the sketch-and-solve approach, the aim here is to define an
+  iterative scheme through which one gradually refines the estimate in order
+  to descend to the true solution of the problem outlined in Equation (\ref{eq: IHS}).
+
+  \begin{equation} \label{eq: IHS}
+    x^{t+1} = \argmin_{x \in \mathcal{C}}  \frac{1}{2} \|S^{t+1} A
+    (x - x^t) \|^2 - \langle A^T (y - Ax^t), x - x^t \rangle
+  \end{equation}
+  The benefit of this approach is that rather than computing $\|Ax\|_2^2$ one
+  instead computes $\| SAx \|_2^2$ which is sufficiently-well concentrated to enjoy
+  convergence to the optimal solution through the iterative scheme.
+  This is a huge computational saving when $SA$ has $m$ rows (which can be bounded
+  independently of $n$) rather than the $n$ of $A$ to compute the quadratic form.
+
+\end{itemize}
+
+\textbf{Related Work.}
+Within this family of convex constrained least squares problems are popular
+data analysis tools such as ordinary least squares ($\mathcal{C} = \R^d$),
+and penalised forms of regression: $\mathcal{C} = \{x : \|x\|_p \le t, p=1,2 \}$
+among many others such as Elastic Net and SVM.
+For problems such as unconstrained regression or LASSO, the time complexity of
+solving the optimisation problem (i.e without the use of cross-validation to
+choose hyperparameters) is  $O(nd^2)$.
+There are various works which have studied these regression problems from both
+the sketch-and-solve and IHS perspectives.
+
+
+
+\noindent\textit{Sketch-and-solve}:
+Provided that a sketch of a matrix is a \textit{subspace embedding} (defined
+in Section \ref{sec: preliminaries}) which roughly requires that norms of vectors
+are preserved under the transformation $S$, then the cost
+of the regression problem can be approximated up to $(1 \pm \eps)$\textit{
+relative error} \cite{woodruff2014sketching}.
+Sarl\'{o}s used \textit{Fast Johnson Lindenstrauss Transforms}
+to construct subspace embeddings to find
+the first $o(nd^2)$ algorithm for solving unconstrained regression
+ \cite{sarlos2006improved}.
+ In addition, a similar idea was employed by Clarkson and Woodruff
+\cite{clarkson2013low} to
+generate a subspace embedding which could be found in time proportional to the
+number of nonzeros in the matrix (denoted $\nnz{A}$ throughout).
+Similar ideas have been extended to ridge regression in
+\cite{avron2016sharper} as well as other forms of constrained regression again
+found in \cite{woodruff2014sketching}.
+
+A particular strength of the sketch-and-solve approach is that only one pass
+of the data and
+as such it is attractive for extremely large datasets.
+Additionally, the \textit{cost}, or objective value, of a regression can be
+approximated up to $(1 \pm \epsilon)$ relative error.
+However, a draqback of the sketch-and-solve method is that although one can
+accurately preserve the objective value of the original problem,
+the projection onto a random subspace yields suboptimal estimators of the
+solution vector to the original problem.
+Therefore, despite these strengths, it is less well-known how the
+ sketch-and-solve
+approach fairs when new examples are added which is of considerable
+importance to machine learning practitioners.
+This has been addressed to some extent in \cite{price2017fast} where the
+authors give an $\ell_{\infty}$ guarantee on the distance between the
+approximate estimator and the optimal solution vector, yet also shown
+was the existence of a pathological
+regression instance for the CountSketch as opposed to the SRHT.
+As a result, using the CountSketch within constrained regression problems
+for solution recovery remains little used and given the potential speedup
+from using this sketch, one which is possibly very useful.
+
+A recent work of \cite{dahiya2018empirical} has explored the use of the
+CountSketch method for a variety of problems.
+Although the authors detail the efficacy of this sketch, they focus on
+variants of the ordinary least squares problem, robust regression, and other
+linear algebra algorithms in the sketch-and-solve model.
+As such, the aim of our work is different as we focus solely on convex
+constrained regression problems with a view to comparing the two competing
+models as well as potential improvements (or deficiencies) of the CountSketch
+compared to other random projections.
+
+
+% Keep below for a two column paper
+% \begin{align*}
+%     x^{t+1} = \argmin_{x \in \mathcal{C}}  \frac{1}{2} \|S^{t+1} A
+%     (x &- x^t) \|^2 \\
+%       &- \langle A^T (y - Ax^t), x - x^t \rangle
+% \end{align*}
+
+\noindent\textit{IHS}:
+Rather than simply solving $\min \|S(Ax-b)\|^2$ Pilanci and Wainwright
+\cite{pilanci2016iterative}
+proposed an iterative method based on solving the iterative
+scheme defined in Equation (\ref{eq: IHS}).
+The benefit of the IHS approach is that after sufficiently many iterates,
+the output approximation, $\hat{x}$, has small error from the true
+optimal solution.
+This idea was later refined to sketch both large ($n$) and high dimensional
+problems ($d$) through an iterative primal-dual approach in
+ \cite{wang2017sketching} but applied specifically to the case of
+  high-dimensional ridge regression:
+ however, again, the faster CountSketch transform
+was not studied.
+In a similar line of work, the IHS method was extended to a wider class
+of problems (i.e. those whose objective function is twice-differentiable and
+convex) than the constrained least-squares regression
+\cite{pilanci2017newton} and hence is beyond the scope of this paper.
+
+
+\textbf{Contributions.}
+Our work seeks to understand the benefits and limitations of the two
+above competing sketching methods in convex constrained regression.
+First we show theoretically that the CountSketch can be used in the iterative
+framework developed by Pilanci and Wainwright.
+Secondly, we show that the CountSketch also suffers from the same
+ solution-approximation
+suboptimality under the (standard) Gaussian design setting which motivates its
+use in the iterative setup.
+Empirically we demonstrate that the CountSketch performs comparably with
+other sketching methods on various synthetic and real datasets:
+importantly the required projection dimension behaves better than suggested by
+the theory.
+Then we show that, in line with the theory, CountSketch is practically a much
+faster summary method as it can be computed while `streaming` the dataset.
+We then give a series of experiments comparing the types of sketches within the
+IHS approach and show that for this class of problems the CountSketch is a good
+choice of random projection.
+Although using a CountSketch as a preconditioner has been studied before
+\cite{dahiya2018empirical}, its use
+within the IHS framework is not understood and this work highlights that
+significant
+speedups can be found by exploiting the CountSketch transform.
+Our work is timely as much of the current research on randomized sketching
+ algorithms
+has focused on the theory and there is still a gap between theoretical and
+practical understanding which we aim to narrow.
