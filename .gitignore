@@ -13,6 +13,12 @@ tests/timings.ipynb
 paper
 figures
 
+# except the following
+!/paper/sketching-convex-ols.tex
+!/paper/introduction.tex
+!/count-sketch-properties.tex
+
+
 # NB want to include the following in sandbox
 lib/sandbox/*  # ignore everything in sandbox except...
 !lib/sandbox/profiling_lasso.py
