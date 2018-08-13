@@ -20,9 +20,9 @@ is displayed.
 
 
 ## Roadmap:
-1. ~~Get IHS LASSO solver working.~~ [26/07/2018] DONE - now incorporate into class based method.
+1. ~~Get IHS LASSO solver working.~~ [26/07/2018] DONE - ~~ now incorporate into class based method.~~ DONE [Early Aug] Now include experiments with real data.
 2. Get IHS SVM solver working.
-3. Add timing functionality to the sketching objects.
+3. ~~Add timing functionality to the sketching objects.~~ DONE [Early Aug] 
 4. Include `sparseJLT` and `countGauss` methods.
 
 ### Notes
