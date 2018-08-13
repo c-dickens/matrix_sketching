@@ -140,7 +140,7 @@ def experiment_mse_vs_row_dim():
 
 def experiment_error_vs_iteration():
     n = 6000
-    d = 20
+    d = 200
     gamma_vals = [4,6,8]
     ihs_sketch_names = ["CountSketch", "SRHT", "Gaussian"]
     number_iterations = np.asarray(np.linspace(2,40,20), dtype=np.int)

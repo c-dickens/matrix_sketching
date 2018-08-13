@@ -42,6 +42,9 @@ def sklearn_wrapper(X,y,n,d, regulariser, trials):
 ################################################################################
 
 def experiment_sklearn_vs_sketch_time_d(n):
+    '''Fix an n and generate datasets of varying width in order to see how the
+    LASSO problem scales with respect to d'''
+
     np.random.seed(param_grid["random_state"])
     cols = param_grid['columns']
     sketch_factor = param_grid['sketch_factors']
@@ -80,12 +83,12 @@ def experiment_sklearn_vs_sketch_time_d(n):
                                          "solve time"       : lasso_time,
                                          "objective value"  : f_opt}
             else:
-                ihs_lasso = IHS(data=X, targets=y, sketch_dimension=2*d,#ketch_factor*d,
+                ihs_lasso = IHS(data=X, targets=y, sketch_dimension=sketch_factor*d,
                                 sketch_type=method,number_iterations=1+np.int(np.ceil(np.log(n))),
                                 data_rows=rows,data_cols=cols,data_vals=vals,
                                 random_state=param_grid["random_state"])
                 x0, setup_time, sketch_time, opt_time, n_iters = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound}, timing=True)
-                #res = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound}, timing=True)
+
                 results[method][d] = {#"estimate"           : x0,
                                       "error to sklearn"   : np.linalg.norm(X@(x0-x_opt),ord=2)**2,
                                       "error to truth"     : np.linalg.norm(X@(x0-truth),ord=2)**2,
@@ -93,22 +96,82 @@ def experiment_sklearn_vs_sketch_time_d(n):
                                       "setup time"         : setup_time,
                                       "sketch_time"        : sketch_time,
                                       "optimisation time"  : opt_time,
-                                      "total time "        : setup_time+sketch_time+opt_time,
-                                      "num iters"          : n_iters}
+                                      "total time"         : setup_time+sketch_time+opt_time,
+                                      "num iters"          : n_iters,
+                                      "num columns"        : d}
 
 
-    file_name = 'figures/lasso_synthetic_times_' + str(n) + "_" + str(d) + ".npy"
+    file_name = 'figures/lasso_synthetic_times_vary_d_at_n_' + str(n) + ".npy"
     np.save(file_name, results)
     print(json.dumps(results,indent=4))
 
-def experiment_sklearn_vs_sketch_n():
-    exp_result_list = Parallel(n_jobs=-1)(delayed(experiment_sklearn_vs_sketch_time_d)(n) for n in param_grid['rows'])
-    print(exp_result_list)
+def experiment_sklearn_vs_sketch_n(d):
+    '''
+    Fix a d and test various n values for the large n lasso regression case
+    '''
+    np.random.seed(param_grid["random_state"])
+    rows = param_grid['rows']
+    sketch_factor = param_grid['sketch_factors']
+    trials = param_grid['num trials']
+    sklearn_lasso_bound = 10
+
+    lasso_time = 0
+
+    # results dicts
+    results = {}
+    results["sklearn"] = {}
+    # for n in rows:
+    #     results["sklearn"][n] = {}
+    for sketch in ihs_sketches:
+        results[sketch] = {}
+        for n in rows:
+            results[sketch][n] = {}
+    print(results)
+
+    for n in rows:
+        print("*"*80)
+        print("Generating data with {} rows".format(n))
+        X,y,truth = generate_lasso_data(n,d,sigma=1.0,density=0.2)
+        print("Converting to COO format")
+        sparse_data = coo_matrix(X)
+        rows, cols, vals = sparse_data.row, sparse_data.col, sparse_data.data
+        print("Beginning experiment")
+
+        for method in results.keys():
+            print(method)
+
+            if method is "sklearn":
+                x_opt, f_opt, lasso_time = sklearn_wrapper(X,y,n,d, sklearn_lasso_bound, trials)
+                results["sklearn"][n] = {#"estimator"        : x_opt,
+                                         "error to truth"   : np.linalg.norm(X@(x_opt-truth),ord=2)**2,
+                                         "solve time"       : lasso_time,
+                                         "objective value"  : f_opt}
+            else:
+                ihs_lasso = IHS(data=X, targets=y, sketch_dimension=sketch_factor*d,
+                                sketch_type=method,number_iterations=1+np.int(np.ceil(np.log(n))),
+                                data_rows=rows,data_cols=cols,data_vals=vals,
+                                random_state=param_grid["random_state"])
+                x0, setup_time, sketch_time, opt_time, n_iters = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound}, timing=True)
+                results[method][n] = {#"estimate"           : x0,
+                                      "error to sklearn"   : np.linalg.norm(X@(x0-x_opt),ord=2)**2,
+                                      "error to truth"     : np.linalg.norm(X@(x0-truth),ord=2)**2,
+                                      "objective val"      : original_lasso_objective(X,y,sklearn_lasso_bound,x0),
+                                      "setup time"         : setup_time,
+                                      "sketch_time"        : sketch_time,
+                                      "optimisation time"  : opt_time,
+                                      "total time"         : setup_time+sketch_time+opt_time,
+                                      "num iters"          : n_iters,
+                                      "num columns"        : d}
+
+
+    file_name = 'figures/lasso_synthetic_times_vary_n_at_d_' + str(d) + ".npy"
+    np.save(file_name, results)
+    print(json.dumps(results,indent=4))
 
 
 def main():
-    #experiment_sklearn_vs_sketch_time_d(param_grid['rows'])
-    experiment_sklearn_vs_sketch_n()
+    experiment_sklearn_vs_sketch_time_d(param_grid['rows'][-1])
+    #experiment_sklearn_vs_sketch_n(200)
 
 if __name__ == "__main__":
     main()
