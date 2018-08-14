@@ -22,7 +22,7 @@ is displayed.
 ## Roadmap:
 1. ~~Get IHS LASSO solver working.~~ [26/07/2018] DONE - ~~ now incorporate into class based method.~~ DONE [Early Aug] Now include experiments with real data.
 2. Get IHS SVM solver working.
-3. ~~Add timing functionality to the sketching objects.~~ DONE [Early Aug] 
+3. ~~Add timing functionality to the sketching objects.~~ DONE [Early Aug]
 4. Include `sparseJLT` and `countGauss` methods.
 
 ### Notes
@@ -54,15 +54,16 @@ sketching scheme.
 datasets.
 
 ## Datasets
+Run the download script to get all datasets.
 - `YearPredictionMSD` - taken from UCI ML repo.  Download and usage from
 `get_data.py` and shell script in data repo.
+- `Susy`
+- `KDDCup` -- nb. this is saved as object array, need to do again and save
+with `dtype=np.float`.
 - `rail2586` - Taken from Florida Sparse Matrix Repo.  Download MATLAB file and
-save `X = X = (Problem.A)'  `.  Convert `.mat` to a `.txt` so others can
-reproduce the results.
-_to try_
-- `landmark` - from Florida collection
-- `specular` - as above
-- `abtaha2` - as above
-- `Rucci1` - as above (take sample of columns)
+save `X = (Problem.A)'  `.
+- `census.mat`  downloaded from `https://github.com/chocjy/randomized-quantile-regression-solvers/blob/master/matlab/data/census_data.mat`
+-`Rucci.mat` - downloaded from https://sparse.tamu.edu/Rucci/Rucci1
+- The mat files are there in case of needing to read in again.
 ### Credits
 I have used code from https://bitbucket.org/vegarant/fastwht to construct the SRHT and used https://github.com/wangshusen/PyRLA as inspiration, although more features and test suites have been added.
