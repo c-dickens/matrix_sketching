@@ -71,10 +71,10 @@ def experiment_sklearn_vs_sketch_time_d(n):
     for d in cols:
         print("*"*80)
         print("Generating data with {} rows and {} columns".format(n,d))
-        X,y,truth = generate_lasso_data(n,d,sigma=1.0,density=0.05)
+        X, dense_X, y,truth = generate_lasso_data(n,d, data_density=0.05,sigma=1.0,)
         print("Converting to COO format")
-        sparse_data = coo_matrix(X)
-        rows, cols, vals = sparse_data.row, sparse_data.col, sparse_data.data
+        #sparse_data = coo_matrix(X)
+        rows, cols, vals = X.row, X.col, X.data
         print("Beginning experiment")
 
         for method in results.keys():
@@ -83,11 +83,12 @@ def experiment_sklearn_vs_sketch_time_d(n):
 
 
             if method is "sklearn":
-                x_opt, f_opt, lasso_time = sklearn_wrapper(X,y,n,d, sklearn_lasso_bound, trials)
+                x_opt, f_opt, lasso_time = sklearn_wrapper(X,y,n,d, sklearn_lasso_bound, 1)
                 results["sklearn"][d] = {#"estimator"        : x_opt,
                                          "error to truth"   : np.linalg.norm(X@(x_opt-truth),ord=2)**2,
                                          "solve time"       : lasso_time,
                                          "objective value"  : f_opt}
+
 
             else:
                 total_setup_time, total_sketch_time, total_opt_time, total_n_iters = 0,0,0,0
@@ -96,21 +97,23 @@ def experiment_sklearn_vs_sketch_time_d(n):
                 for i in range(trials):
                     print("Trial ", i)
                     total_iters = 0
-
-                    ihs_lasso = IHS(data=X, targets=y, sketch_dimension=sketch_factor*d,
+                    ihs_lasso = IHS(data=dense_X, targets=y, sketch_dimension=sketch_factor*d,
                                     sketch_type=method,number_iterations=1+np.int(np.ceil(np.log(n))),
                                     data_rows=rows,data_cols=cols,data_vals=vals,
                                     random_state=param_grid["random_state"])
                     x0, setup_time, sketch_time, opt_time, n_iters = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound}, timing=True)
+                    print("Sketch time on ({},{}) is {}".format(n,d,sketch_time))
+                    print("N iters required {}".format(n_iters))
                     sklearn_error += np.linalg.norm(X@(x0-x_opt),ord=2)**2
                     truth_error += np.linalg.norm(X@(x0-truth),ord=2)**2
                     total_obj_val += original_lasso_objective(X,y,sklearn_lasso_bound,x0)
-                    total_iters += n_iters
+                    total_n_iters += n_iters
                     total_setup_time += setup_time
                     total_sketch_time += sketch_time
                     total_opt_time += opt_time
 
-                mean_n_iters = np.int(np.ceil(total_iters/trials))
+                mean_n_iters = np.int(np.ceil(total_n_iters/trials))
+
                 mean_setup_time = total_setup_time / trials
                 mean_sketch_time = total_sketch_time / trials
                 mean_opt_time = total_opt_time / trials

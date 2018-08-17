@@ -24,7 +24,7 @@ def update_rcParams():
     # This mpl style is from the UCSC BME163 class.
     plt.rcParams.update({
         'font.size'           : 12.0      ,
-        'font.family'         : 'Computer Modern'   ,
+        'font.family'         : 'DejaVu Sans'   ,
         'xtick.major.size'    : 4        ,
         'xtick.major.width'   : 0.75     ,
         'xtick.labelsize'     : 12.0      ,

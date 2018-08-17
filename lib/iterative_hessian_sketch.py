@@ -24,6 +24,10 @@ def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x):
     d = data.shape[1]
     Q = data.T@data
     big_hessian = np.vstack((np.c_[Q, -Q], np.c_[-Q,Q])) + 1E-5*np.eye(2*d)
+    # print("Shape ATy {}".format(ATy.shape))
+    # print("Othjer term shape {}".format((data@old_x).shape))
+    # print("old_X shape {}".format(old_x.shape))
+    # print("data.shape {}".format(data.shape))
     linear_term = ATy - data.T@(data@old_x)
     big_linear_term = np.hstack((-linear_term, linear_term))
 
@@ -58,6 +62,23 @@ def _countSketch_fast(nonzero_rows, nonzero_cols, nonzero_data, n, d, sketch_dim
             old_row = row_id
         nnz_id += 1
     return sketch
+
+@jit(nopython=True)
+def countSketch_dense(data, sketch_dimension):
+    '''
+    count sketch for dense data.
+    Views the matrix row-wise and hashes rows to buckets in S.
+    '''
+
+    n,d = data.shape
+    sketch = np.zeros((sketch_dimension,d))
+    hashedIndices = np.random.choice(sketch_dimension, n, replace=True) # hash n rows into sketch dimension buckets
+    randSigns = np.random.choice(2, n, replace=True) * 2 - 1
+    data = randSigns.reshape(n,1) * data # flip the sign of half of the rows
+    for ii in range(sketch_dimension):
+        bucket_id = (hashedIndices == ii) # gets row indices in bucket ii
+        #bucket_id = np.where(hashedIndices == ii)
+        sketch[ii,:] = np.sum(data[bucket_id,:],axis=0) # sums all of the rows in the same bucket
 
 def shift_bit_length(x):
     '''Given int x find next largest power of 2.
@@ -387,16 +408,21 @@ class IHS(CountSketch, SRHT, GaussianSketch):
         timing - bool - False don't return timings, if true then do
         '''
         sketch_function = self.sketch_type
-        # Setup
-        ATy = np.ravel(self.data.T@self.targets)
-        #covariance_matrix = self.data.T@self.data
-        #summaries = self.generate_summaries()
-        x0 = np.zeros(shape=(self.data.shape[1]))
-        norm_diff = 1.0
-        old_norm = 1.0
         itr_count = 0
+        ATy = self.data.T@self.targets
+        # print("ATy shape {}".format(ATy.shape))
+        x0 = np.zeros(shape=(self.data.shape[1],))
 
         if constraints is None:
+            # Setup
+            #ATy = np.ravel(self.data.T@self.targets)
+
+            #covariance_matrix = self.data.T@self.data
+            #summaries = self.generate_summaries()
+
+            norm_diff = 1.0
+            old_norm = 1.0
+
             for iter_num in range(self.number_iterations):
                 #if norm_diff > 1E-5:
                 #print("Entering if part")
@@ -430,10 +456,13 @@ class IHS(CountSketch, SRHT, GaussianSketch):
 
             setup_time_start = default_timer()
             A = self.data
+            # print(type(A))
             y = self.targets
             x0 = np.zeros(shape=(self.d,))
             m = int(self.sketch_dimension)
             ATy = A.T@y
+            # print("In loop shape {}".format(ATy.shape))
+            # print("mat-vec shape {}".format((A@x0).shape))
             setup_time = default_timer() - setup_time_start
 
 
@@ -449,7 +478,7 @@ class IHS(CountSketch, SRHT, GaussianSketch):
 
 
             for n_iter in range(self.number_iterations):
-                if norm_diff > 10E-15:
+                if norm_diff > 10E-12:
                         itr_count += 1
                         print("ITERATION {} testing sketch {}".format(itr_count, sketch_function))
 
@@ -457,10 +486,15 @@ class IHS(CountSketch, SRHT, GaussianSketch):
                         # start_sketch_time = default_timer()
                         #S_A = summaries[:,:, n_iter]
                         if sketch_function is "CountSketch":
-                            #print("Sketching ")
-                            sketch_start = default_timer()
-                            S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
-                            sketch_time += default_timer() - sketch_start
+
+                            if self.d < 400:
+                                sketch_start = default_timer()
+                                S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
+                                sketch_time += default_timer() - sketch_start
+                            else:
+                                sketch_start = default_timer()
+                                S_A = countSketch_dense(self.data, self.sketch_dimension)
+                                sketch_time += default_timer() - sketch_start
                         elif sketch_function is "SRHT":
                             sketch_start = default_timer()
                             S_A = srht_transform1(self.data, self.sketch_dimension)
