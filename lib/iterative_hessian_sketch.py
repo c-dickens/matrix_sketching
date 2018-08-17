@@ -23,7 +23,7 @@ def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x):
     '''
     d = data.shape[1]
     Q = data.T@data
-    big_hessian = np.vstack((np.c_[Q, -Q], np.c_[-Q,Q])) + 1E-10*np.eye(2*d)
+    big_hessian = np.vstack((np.c_[Q, -Q], np.c_[-Q,Q])) + 1E-5*np.eye(2*d)
     linear_term = ATy - data.T@(data@old_x)
     big_linear_term = np.hstack((-linear_term, linear_term))
 
@@ -173,7 +173,7 @@ class IHS(CountSketch, SRHT, GaussianSketch):
                                 "SRHT"        : srht_transform1,
                                 "Gaussian"    : GaussianSketch}
         if np.asarray([data_rows,data_cols,data_vals]).any() == None:
-            print("Convert to coo mat")
+            print("Convert to coo mat within IHS")
             X_coo = coo_matrix(self.data)
             self.nonzero_rows = X_coo.row
             self.nonzero_cols = X_coo.col
@@ -449,62 +449,52 @@ class IHS(CountSketch, SRHT, GaussianSketch):
 
 
             for n_iter in range(self.number_iterations):
-                if norm_diff > 10E-10:
-                    itr_count += 1
-                    print("ITERATION {} testing sketch {}".format(itr_count, sketch_function))
+                if norm_diff > 10E-15:
+                        itr_count += 1
+                        print("ITERATION {} testing sketch {}".format(itr_count, sketch_function))
 
-                    # Potentially remove this for a single call to sketch from the sketch_function
-                    # start_sketch_time = default_timer()
-                    #S_A = summaries[:,:, n_iter]
-                    if sketch_function is "CountSketch":
-                        #print("Sketching ")
-                        sketch_start = default_timer()
-                        S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
-                        sketch_time += default_timer() - sketch_start
-                    elif sketch_function is "SRHT":
-                        sketch_start = default_timer()
-                        S_A = srht_transform1(self.data, self.sketch_dimension)
-                        sketch_time += default_timer() - sketch_start
-                    # sketch_start = default_timer()
-                    # S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,
-                    #             self.nonzero_data, self.n, self.d, self.sketch_dimension)
-                    # sketch_time += default_timer() - sketch_start
-                    # end_sketch_time = default_timer() - start_sketch_time
-                    # print("SKETCH TIME: {}".format(end_sketch_time))
-                    # sketch_time += end_sketch_time
+                        # Potentially remove this for a single call to sketch from the sketch_function
+                        # start_sketch_time = default_timer()
+                        #S_A = summaries[:,:, n_iter]
+                        if sketch_function is "CountSketch":
+                            #print("Sketching ")
+                            sketch_start = default_timer()
+                            S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
+                            sketch_time += default_timer() - sketch_start
+                        elif sketch_function is "SRHT":
+                            sketch_start = default_timer()
+                            S_A = srht_transform1(self.data, self.sketch_dimension)
+                            sketch_time += default_timer() - sketch_start
 
 
-                    ### optimization ###
-                    opt_start = default_timer()
-                    #sub_prob = lasso_qp_iters(S_A, ATy, covariance_mat, _lambda, x0)
-                    sub_prob = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0)
-                    end_opt_time = default_timer()-opt_start
-                    opt_time += end_opt_time
+                        ### optimization ###
+                        opt_start = default_timer()
+                        #sub_prob = lasso_qp_iters(S_A, ATy, covariance_mat, _lambda, x0)
+                        sub_prob = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0)
+                        end_opt_time = default_timer()-opt_start
+                        opt_time += end_opt_time
 
-                    ### Norm checking and updates ###
-                    #x_out = sub_prob[2]
-                    x_out = sub_prob[0]
+                        ### Norm checking and updates ###
+                        #x_out = sub_prob[2]
+                        x_out = sub_prob[0]
 
-                    x_new = x_out[self.d:] - x_out[:self.d]
+                        x_new = x_out[self.d:] - x_out[:self.d]
+                        print("Norm of new error summand: {}".format(np.linalg.norm(x_new)))
+                        #print("iterative norm ",np.linalg.norm(x_new))
+                        #new_obj_val = lasso(A,x_new,y,lasso_bound)
 
-                    #print("iterative norm ",np.linalg.norm(x_new))
-                    new_obj_val = lasso(A,x_new,y,lasso_bound)
-                    norm_diff = np.abs(new_obj_val - old_obj_val)/old_obj_val
-                    #print("soln norm ", np.linalg.norm(x_new,1))
-                    #approx_norm_sum += np.linalg.norm(x_new,1)
-                    #print("Norm diff {}".format(norm_diff))
-                    x_test_approx = x0.copy() # test diference between old x0 --. now x_test_approx and new x0
-                    x0 += x_new
-                    #print("new_x_approx: {}".format(x0))
-                    #print("Norm diff: {}".format(np.linalg.norm(x0 - x_test_approx)))
-                    old_obj_val = new_obj_val
+                        #norm_change = np.linalg.norm()
+                        #print("soln norm ", np.linalg.norm(x_new,1))
+                        #approx_norm_sum += np.linalg.norm(x_new,1)
+                        #print("Norm diff {}".format(norm_diff))
+                        x_test_approx = x0.copy() # test diference between old x0 --. now x_test_approx and new x0
+                        x0 += x_new
+                        new_norm = np.linalg.norm(x0,ord=2)**2
+                        norm_diff = np.abs(new_norm - old_norm)/old_norm
+                        old_norm = new_norm
+                        #print("new_x_approx: {}".format(x0))
+                        print("Norm diff: {}".format(norm_diff))
 
-            #print("Sum of norms: {}".format(approx_norm_sum))
-            # print("x approx norm ", np.linalg.norm(x0,1))
-            # print("Setup cost: {}".format(setup_time))
-            # print("Total sketching time: {}".format(sketch_time))
-            # print("Total optimization time: {}".format(opt_time))
-            # print("TOTAL TIME: {}".format(setup_time + sketch_time + opt_time))
 
         if timing is True:
             print("returning time")

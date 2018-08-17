@@ -4,6 +4,7 @@ Includes line styles, colours etc for each of the sketching methods.
 '''
 from experiment_parameter_grid import param_grid
 
+
 plotting_params = {"CountSketch" : {"colour" : "b",
                                     "line_style" : '-',
                                     "marker" : "o" },

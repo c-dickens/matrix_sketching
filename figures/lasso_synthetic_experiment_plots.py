@@ -1,13 +1,19 @@
 '''
 Plots for the LASSO experients `lasso_synthetic_experiment.py`
 '''
+import matplotlib.pyplot as plt
+from matplotlib import rc
 import json
 import sys
 sys.path.insert(0,'..')
 from experiment_parameter_grid import param_grid
 from my_plot_styles import plotting_params
+from matplotlib_config import update_rcParams
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+
+update_rcParams()
+
 
 def plot_lasso_synthetic_d():
     results = np.load('lasso_synthetic_times_vary_d_at_n_500000.npy')
@@ -39,11 +45,12 @@ def plot_lasso_synthetic_d():
     fig.savefig('lasso_time_vs_cols.pdf', bbox_inches="tight")
     plt.show()
 
-def plot_sketch_time_opt_time_vs_d():
-    results = np.load('lasso_synthetic_times_vary_d_at_n_500000.npy')
-    results = results[()]
-    fig,ax = plt.subplots(dpi=250)
+def plot_sketch_time_opt_time_vs_d(results, n):
+    #results = np.load('lasso_synthetic_times_vary_d_at_n_500000.npy')
+    #results = results[()]
+    fig,ax = plt.subplots(figsize=(12,8))
     for method in results.keys():
+
         cols = [d for d in results[method].keys()]
 
         if method == "sklearn":
@@ -73,11 +80,12 @@ def plot_sketch_time_opt_time_vs_d():
                     linestyle="--", label=opt_label, markersize=6.0)
 
 
-    ax.legend(title="n=5,m=2") # for later usae  ax.legend(title='(n,m) = ({},{}d)'.format(n_rows,sketch_size))
-    ax.set_xlabel("d")
+    ax.legend(loc=2, title="$n={}$,$m={}d$".format(n,param_grid['sketch_factors']),frameon=False) # for later usae  ax.legend(title='(n,m) = ({},{}d)'.format(n_rows,sketch_size))
+    ax.set_xlabel("$d$")
     ax.set_yscale('log')
-    ax.set_ylabel("log(time) (log seconds)")
-    fig.savefig('lasso_time_vs_cols_detailed.pdf', bbox_inches="tight")
+    ax.set_ylabel("$\log($time$)$ (log seconds)")
+    save_name = 'lasso_time_vs_cols_detailed' + str(n) + '.pdf'
+    fig.savefig(save_name, bbox_inches="tight")
     plt.show()
 
 
@@ -155,7 +163,10 @@ def plot_sketch_time_opt_time_vs_n():
 
 
 def main():
-    plot_sketch_time_opt_time_vs_n()
+    for n in param_grid['rows']:
+        input_file = 'lasso_synthetic_times_vary_d_at_n_' + str(n) + ".npy"
+        results = np.load(input_file)[()]
+        plot_sketch_time_opt_time_vs_d(results,n)
     #plot_sketch_time_opt_time_vs_d()
     #plot_lasso_synthetic_d()
     #plot_lasso_synthetic_n()
