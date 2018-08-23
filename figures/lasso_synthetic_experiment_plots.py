@@ -48,7 +48,7 @@ def plot_lasso_synthetic_d():
 def plot_sketch_time_opt_time_vs_d(results, n):
     #results = np.load('lasso_synthetic_times_vary_d_at_n_500000.npy')
     #results = results[()]
-    fig,ax = plt.subplots(figsize=(12,8))
+    fig,ax = plt.subplots(figsize=(9,6))
     for method in results.keys():
 
         cols = [d for d in results[method].keys()]
@@ -80,7 +80,7 @@ def plot_sketch_time_opt_time_vs_d(results, n):
                     linestyle="--", label=opt_label, markersize=6.0)
 
 
-    ax.legend(loc=2, title="$n={}$,$m={}d$".format(n,param_grid['sketch_factors']),frameon=False) # for later usae  ax.legend(title='(n,m) = ({},{}d)'.format(n_rows,sketch_size))
+    ax.legend(loc=4, title="$n={}$, $m={}d$".format(n,param_grid['sketch_factors']),frameon=False) # for later usae  ax.legend(title='(n,m) = ({},{}d)'.format(n_rows,sketch_size))
     ax.set_xlabel("$d$")
     ax.set_yscale('log')
     ax.set_ylabel("$\log($time$)$ (log seconds)")

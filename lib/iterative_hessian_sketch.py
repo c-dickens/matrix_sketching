@@ -13,13 +13,19 @@ from numba import jit
 
 
 ############################## SOLVER FUNCTIONS ###############################
+
 def lasso(A,x,b,regulariser):
     return np.linalg.norm(A@x-b)**2 - regulariser*np.linalg.norm(x,1)
 
 
-def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x):
+def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x, timing=False):
     '''Solve the iterative version of lasso.  QP constrants adapted from
     https://stats.stackexchange.com/questions/119795/quadratic-programming-and-lasso
+
+    if timing
+    return result - the optimization output
+           solve_time - optimization time
+           norm(linear_term) - norm of the gradient
     '''
     d = data.shape[1]
     Q = data.T@data
@@ -36,9 +42,14 @@ def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x):
     constraint_vals = np.zeros((3*d))
     constraint_vals[:d] = regulariser
 
+    solve_start = default_timer()
     result = qp.solve_qp(big_hessian, big_linear_term, -constraint_matrix.T, constraint_vals)
-    #print(result)
-    return result
+    solve_time = default_timer() - solve_start
+
+    if timing:
+        return result, solve_time, np.linalg.norm(linear_term)
+    else:
+        return result
 
 @jit('float64[:,:](int32[:],int32[:],float64[:],int64,int64,int64)',nopython=True)
 def _countSketch_fast(nonzero_rows, nonzero_cols, nonzero_data, n, d, sketch_dimension):
@@ -476,58 +487,62 @@ class IHS(CountSketch, SRHT, GaussianSketch):
             # sketch_time = 0 unnecessary as will come from the previous sketch call
 
 
-
+            print("USING {} iterations".format(self.number_iterations))
             for n_iter in range(self.number_iterations):
-                if norm_diff > 10E-12:
-                        itr_count += 1
-                        print("ITERATION {} testing sketch {}".format(itr_count, sketch_function))
+                if norm_diff > 10E-16:
+                    itr_count += 1
+                    print("ITERATION {} testing sketch {}".format(itr_count, sketch_function)) # change this when using norm diff comparison
 
-                        # Potentially remove this for a single call to sketch from the sketch_function
-                        # start_sketch_time = default_timer()
-                        #S_A = summaries[:,:, n_iter]
-                        if sketch_function is "CountSketch":
+                    # Potentially remove this for a single call to sketch from the sketch_function
+                    # start_sketch_time = default_timer()
+                    #S_A = summaries[:,:, n_iter]
+                    if sketch_function is "CountSketch":
 
-                            if self.d < 400:
-                                sketch_start = default_timer()
-                                S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
-                                sketch_time += default_timer() - sketch_start
-                            else:
-                                sketch_start = default_timer()
-                                S_A = countSketch_dense(self.data, self.sketch_dimension)
-                                sketch_time += default_timer() - sketch_start
-                        elif sketch_function is "SRHT":
+                        if self.d < 400:
                             sketch_start = default_timer()
-                            S_A = srht_transform1(self.data, self.sketch_dimension)
+                            S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
                             sketch_time += default_timer() - sketch_start
+                        else:
+                            sketch_start = default_timer()
+                            S_A = countSketch_dense(self.data, self.sketch_dimension)
+                            sketch_time += default_timer() - sketch_start
+                    elif sketch_function is "SRHT":
+                        sketch_start = default_timer()
+                        S_A = srht_transform1(self.data, self.sketch_dimension)
+                        sketch_time += default_timer() - sketch_start
 
 
-                        ### optimization ###
-                        opt_start = default_timer()
-                        #sub_prob = lasso_qp_iters(S_A, ATy, covariance_mat, _lambda, x0)
-                        sub_prob = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0)
-                        end_opt_time = default_timer()-opt_start
-                        opt_time += end_opt_time
+                    ### optimization ###
+                    #opt_start = default_timer()
+                    #sub_prob = lasso_qp_iters(S_A, ATy, covariance_mat, _lambda, x0)
+                    sub_prob, end_opt_time, grad_norm = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0,timing=True)
+                    #end_opt_time = default_timer()-opt_start
+                    opt_time += end_opt_time
+                    print("Norm of gradient: {}".format(grad_norm))
 
-                        ### Norm checking and updates ###
-                        #x_out = sub_prob[2]
-                        x_out = sub_prob[0]
 
-                        x_new = x_out[self.d:] - x_out[:self.d]
-                        print("Norm of new error summand: {}".format(np.linalg.norm(x_new)))
-                        #print("iterative norm ",np.linalg.norm(x_new))
-                        #new_obj_val = lasso(A,x_new,y,lasso_bound)
+                    ### Norm checking and updates ###
+                    #x_out = sub_prob[2]
+                    x_out = sub_prob[0]
 
-                        #norm_change = np.linalg.norm()
-                        #print("soln norm ", np.linalg.norm(x_new,1))
-                        #approx_norm_sum += np.linalg.norm(x_new,1)
-                        #print("Norm diff {}".format(norm_diff))
-                        x_test_approx = x0.copy() # test diference between old x0 --. now x_test_approx and new x0
-                        x0 += x_new
-                        new_norm = np.linalg.norm(x0,ord=2)**2
-                        norm_diff = np.abs(new_norm - old_norm)/old_norm
-                        old_norm = new_norm
-                        #print("new_x_approx: {}".format(x0))
-                        print("Norm diff: {}".format(norm_diff))
+                    x_new = x_out[self.d:] - x_out[:self.d]
+                    print("Norm of new error summand: {}".format(np.linalg.norm(x_new)))
+                    updated_grad = np.linalg.norm(A.T@(A@x_new) - ATy)
+                    print("Updated gradient: {}".format(updated_grad))
+                    #print("iterative norm ",np.linalg.norm(x_new))
+                    #new_obj_val = lasso(A,x_new,y,lasso_bound)
+
+                    #norm_change = np.linalg.norm()
+                    #print("soln norm ", np.linalg.norm(x_new,1))
+                    #approx_norm_sum += np.linalg.norm(x_new,1)
+                    #print("Norm diff {}".format(norm_diff))
+                    x_test_approx = x0.copy() # test diference between old x0 --. now x_test_approx and new x0
+                    x0 += x_new
+                    new_norm = np.linalg.norm(x0,ord=2)**2
+                    norm_diff = np.abs(new_norm - old_norm)/old_norm
+                    old_norm = new_norm
+                    #print("new_x_approx: {}".format(x0))
+                    print("Norm diff: {}".format(norm_diff))
 
 
         if timing is True:

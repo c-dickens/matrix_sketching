@@ -71,7 +71,8 @@ def experiment_sklearn_vs_sketch_time_d(n):
     for d in cols:
         print("*"*80)
         print("Generating data with {} rows and {} columns".format(n,d))
-        X, dense_X, y,truth = generate_lasso_data(n,d, data_density=0.05,sigma=1.0,)
+        X, dense_X, y,truth = generate_lasso_data(n,d, data_density=0.1,sigma=1.0,)
+        #print('REQUIRED ITERATIONS {}'.format(1+np.int(np.ceil(np.log(n)))))
         print("Converting to COO format")
         #sparse_data = coo_matrix(X)
         rows, cols, vals = X.row, X.col, X.data
@@ -97,8 +98,9 @@ def experiment_sklearn_vs_sketch_time_d(n):
                 for i in range(trials):
                     print("Trial ", i)
                     total_iters = 0
+                    #print("Testing {} iterations for IHS".format(1+np.int(np.ceil(np.log(n)))))
                     ihs_lasso = IHS(data=dense_X, targets=y, sketch_dimension=sketch_factor*d,
-                                    sketch_type=method,number_iterations=1+np.int(np.ceil(np.log(n))),
+                                    sketch_type=method,number_iterations=np.int(np.ceil(np.log10(n))),
                                     data_rows=rows,data_cols=cols,data_vals=vals,
                                     random_state=param_grid["random_state"])
                     x0, setup_time, sketch_time, opt_time, n_iters = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound}, timing=True)
