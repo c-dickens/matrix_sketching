@@ -60,8 +60,10 @@ def experiment_sklearn_vs_sketch_time_d(n):
     # results dicts
     results = {}
     results["sklearn"] = {}
+    results["classical"] = {}
     for d in cols:
         results["sklearn"][d] = {}
+        results["classical"][d] = {}
     for sketch in ihs_sketches:
         results[sketch] = {}
         for d in cols:
@@ -91,6 +93,8 @@ def experiment_sklearn_vs_sketch_time_d(n):
                                          "objective value"  : f_opt}
 
 
+            elif method is "classical":
+                print("TESTING CLASSICAL SKETCH")
             else:
                 total_setup_time, total_sketch_time, total_opt_time, total_n_iters = 0,0,0,0
                 sklearn_error, truth_error, total_obj_val = 0,0,0

@@ -4,7 +4,7 @@ from timeit import default_timer
 from scipy import optimize
 from sklearn.datasets import make_regression
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Lasso
 import scipy.optimize
 import unittest
 import sys
@@ -52,14 +52,13 @@ class TestClassicalSketch(unittest.TestCase):
             self.assertEqual(sketch_X.shape[0], sketch_size) # num rows in sketch data equal
             self.assertEqual(sketch_y.shape[0], sketch_size) # num rows in sketch target equal
 
-
-
     def test_sketch_and_solve_unconstrained(self):
         '''Tests the solution of the sketch and solve approach for the
         unconstrained regression problem.
 
         Use num_trials for averging and check that the approximation error
         decreases as the sketch size is increased.'''
+        print('TESTING UNCONSTRAINED REGRESSION')
         X,y,coef = make_regression(n_samples = 5000, n_features = 50, noise=5.0, coef=True)
         num_trials = 10
         sketch_size_1 = 100
@@ -70,14 +69,7 @@ class TestClassicalSketch(unittest.TestCase):
 
         # Get optimal / true weights
         true_x = np.linalg.lstsq(X,y, rcond=None)[0]
-        #print("NumPy weights: {}".format(true_x))
         true_cost = np.linalg.norm(X@true_x - y)**2
-        #print("NumPy cost: {}".format(true_cost))
-
-        # Sklearn method
-        # skl = LinearRegression()
-        # skl.fit(X,y)
-        # print("Sklearn weights: {}".format(skl.coef_))
 
         for sketch_method in sketch_names:
             print("Testing sketch: {}".format(sketch_method))
@@ -133,7 +125,85 @@ class TestClassicalSketch(unittest.TestCase):
             print("Solution approximation: {}".format(sol_error3))
             # self.assertTrue(cost_error2 < cost_error1)
             # self.assertTrue(cost_error3 < cost_error2)
-            # self.assertTrue(sol_error2 < sol_error1)
-            # self.assertTrue(sol_error3 < sol_error2)
+
+    def test_sketch_and_solve_lasso(self):
+        '''Tests the solution of the sketch and solve approach for the
+        unconstrained regression problem.
+
+        Use num_trials for averging and check that the approximation error
+        decreases as the sketch size is increased.'''
+        print("TESTING LASSO SOLVER")
+        n = 5000
+        d = 25
+        sklearn_lasso_bound = 10
+        X,y,coef = make_regression(n_samples = n, n_features = d, noise=5.0, coef=True)
+        num_trials = 5
+        sketch_size_1 = 100
+        sketch_size_2 = 250
+        sketch_size_3 = 500
+        sol_error1, sol_error2, sol_error3 = 0,0,0
+        cost_error1, cost_error2, cost_error3 = 0,0,0
+
+        # Get optimal / true weights
+        clf = Lasso(sklearn_lasso_bound)
+        lasso = clf.fit(n*X,n*y)
+        true_x = lasso.coef_
+        true_cost = 0.5*np.linalg.norm(X@true_x-y,ord=2)**2 +\
+                                    sklearn_lasso_bound*np.linalg.norm(true_x,1)
+        x_norm_bound = np.linalg.norm(true_x,1)
+
+        for sketch_method in sketch_names:
+            print("Testing sketch: {}".format(sketch_method))
+            for trial in range(num_trials):
+                sketch_and_solve = ClassicalSketch(data=X, targets=y,
+                                                    sketch_dimension=sketch_size_1,
+                                                    sketch_type=sketch_method,
+                                                    random_state=random_seed)
+                sketch_x = sketch_and_solve.solve({'problem' : "lasso", 'bound' : x_norm_bound})
+                #print("Sketched weights: {}".format(sketch_x))
+                cost_approx = (0.5/n)*np.linalg.norm(X@sketch_x - y)**2
+                #print("Approx cost: {}".format(cost_approx))
+                cost_error1 += np.abs(cost_approx - true_cost)/true_cost
+                sol_error1  += (0.5/n)*np.linalg.norm(X@(sketch_x-true_x))**2
+
+            for trial in range(num_trials):
+                sketch_and_solve = ClassicalSketch(data=X, targets=y,
+                                                    sketch_dimension=sketch_size_2,
+                                                    sketch_type=sketch_method,
+                                                    random_state=random_seed)
+                sketch_x = sketch_and_solve.solve({'problem' : "lasso", 'bound' : x_norm_bound})
+                #print("Sketched weights: {}".format(sketch_x))
+                cost_approx = (0.5/n)*np.linalg.norm(X@sketch_x - y)**2
+                #print("Approx cost: {}".format(cost_approx))
+                cost_error2 += np.abs(cost_approx - true_cost)/true_cost
+                sol_error2  += (0.5/n)*np.linalg.norm(X@(sketch_x-true_x))**2
+
+            for trial in range(num_trials):
+                sketch_and_solve = ClassicalSketch(data=X, targets=y,
+                                                    sketch_dimension=sketch_size_3,
+                                                    sketch_type=sketch_method,
+                                                    random_state=random_seed)
+                sketch_x = sketch_and_solve.solve({'problem' : "lasso", 'bound' : x_norm_bound})
+                #print("Sketched weights: {}".format(sketch_x))
+                cost_approx = (0.5/n)*np.linalg.norm(X@sketch_x - y)**2
+                #print("Approx cost: {}".format(cost_approx))
+                cost_error3 += np.abs(cost_approx - true_cost)/true_cost
+                sol_error3  += (0.5/n)*np.linalg.norm(X@(sketch_x-true_x))**2
+
+            cost_error1 /= num_trials
+            sol_error1 /= num_trials
+            cost_error2 /= num_trials
+            sol_error2 /= num_trials
+            cost_error3 /= num_trials
+            sol_error3 /= num_trials
+
+            print("Approximations for {} with sketch size {}".format(sketch_method, sketch_size_1))
+            print("Relative Error cost approximation: {}".format(cost_error1))
+            print("Relative Error cost approximation: {}".format(cost_error2))
+            print("Relative Error cost approximation: {}".format(cost_error3))
+            print("Solution approximation: {}".format(sol_error1))
+            print("Solution approximation: {}".format(sol_error2))
+            print("Solution approximation: {}".format(sol_error3))
+
 if __name__ == "__main__":
     unittest.main()

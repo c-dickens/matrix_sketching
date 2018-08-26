@@ -148,7 +148,7 @@ class TestSketch(unittest.TestCase):
         print("TESTING LASSO ITERATIVE HESSIAN SKETCH ALGORITHM")
 
         ncols = 250
-        nrows = 1000000
+        nrows = 100000
         sketch_size = 1000
         sklearn_lasso_bound = 10
         trials = 5

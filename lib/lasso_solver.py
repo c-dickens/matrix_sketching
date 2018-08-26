@@ -178,7 +178,13 @@ if __name__ == "__main__":
     # cvxopt
     for lasso_val in lasso_bound:
         cvx_result = lasso_solver_cvx(Hessian, ATy.T, lasso_val)
-        print("Lasso bound: {}, QP estimate: {}".format(lasso_val, cvx_result))
+        print("Lasso bound: {}, CVXOPT estimate: {}".format(lasso_val, cvx_result))
+
+    # for lasso_val in lasso_bound:
+    #     quadprog_result = lasso_solver_qp(Hessian, ATy.T, lasso_val)
+    #     x_out = sub_prob[0]
+    #     x_new = x_out[2:] - x_out[:2]
+    #     print("Lasso bound: {}, QuadProg estimate: {}".format(lasso_val, quadprog_result))
 
     # # scipy
     for lasso_val in lasso_bound:
