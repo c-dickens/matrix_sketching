@@ -3,6 +3,15 @@
 The aim of the project is to be a fully reproducible and usable library for various matrix sketching tasks.
 The initial problem is to investigate how different random transforms can be used as preconditioners for Convex Constrained Least Squares problems (CCLSQ), particularly with a view to exploiting sparse embeddings for fast-to-compute preconditioners.
 
+# TO-DO:
+Add plots that vary the sketch size (as a function of `d`) and measure the 
+error for a fixed matrix `A`.
+Note that even if we can guarantee that at a certain level a sketch is a 
+subspace embedding we can potentially use a smaller one in the IHS which 
+will make for interesting comparison.
+Do this for real datasets as well as synthetic data and on synthetic data
+use different distributions to alter the leverage distribution.
+
 ## Installation:
 1. `git clone` the repo
 2. `cd matrix_sketching`
