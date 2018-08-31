@@ -51,14 +51,14 @@ def generate_random_matrices(n,d,density=0.1, distribution='gaussian'):
     if distribution is 'gaussian':
         return random(n,d,density).toarray()
     elif distribution is 'cauchy':
-        if density > 0.5:
-            A = np.random.randn(n,d) / np.random.randn(n,d)
-        else:
-            A = np.zeros((n*d,)) # start off as array then reshape
-            num_non_zeros = np.int(density*n*d)
-            cauchy_rvs = np.random.randn(num_non_zeros,) / np.random.randn(num_non_zeros,)
-            non_zero_ids = np.random.choice(n*d, np.int(density*n*d), replace=False)
-            for i in range(len(non_zero_ids)):
-                A[non_zero_ids[i]] = cauchy_rvs[i]
-            A.reshape((n,d))
+        # if density > 0.5:
+        A = np.random.randn(n,d) / np.random.randn(n,d)
+        # else:
+        #     A = np.zeros((n*d,)) # start off as array then reshape
+        #     num_non_zeros = np.int(density*n*d)
+        #     cauchy_rvs = np.random.randn(num_non_zeros,) / np.random.randn(num_non_zeros,)
+        #     non_zero_ids = np.random.choice(n*d, np.int(density*n*d), replace=False)
+        #     for i in range(len(non_zero_ids)):
+        #         A[non_zero_ids[i]] = cauchy_rvs[i]
+        #     A.reshape((n,d))
         return A
