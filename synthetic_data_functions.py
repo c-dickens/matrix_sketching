@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 
 
 
-def unconstrained_regession_data(nsamples, nfeatures, variance):#, random_seed=100):
+def unconstrained_regession_data(nsamples, nfeatures, variance, density=None):#, random_seed=100):
     '''
     Generate data as described in https://arxiv.org/pdf/1411.0347.pdf 3.1
     1. Generate A in R^{n \times d} with A_ij inn N(0,1)
@@ -17,7 +17,10 @@ def unconstrained_regession_data(nsamples, nfeatures, variance):#, random_seed=1
     3. Set y = Ax^* + w where w ~ N(0,variance*I)
     '''
     #np.random.seed(random_seed)
-    A = np.random.randn(nsamples, nfeatures)
+    if density is not None:
+        A = random(nsamples, nfeatures, density)
+    else:
+        A = np.random.randn(nsamples, nfeatures)
     x_true = np.random.randn(nfeatures)
     x_true /= np.linalg.norm(x_true)
     noise = np.random.normal(loc=0.0,scale=variance,size=(nsamples,))
@@ -41,3 +44,21 @@ def generate_lasso_data(m, n, data_density=0.1, sigma=5, sol_density=0.2):
     #scale_y = Normalizer().fit(Y)
     #new_y = scaler.transform(Y)
     return sparse_X, dense_X, Y, beta_star
+
+def generate_random_matrices(n,d,density=0.1, distribution='gaussian'):
+    '''Function to generate random matrices from various distributions.'''
+
+    if distribution is 'gaussian':
+        return random(n,d,density).toarray()
+    elif distribution is 'cauchy':
+        if density > 0.5:
+            A = np.random.randn(n,d) / np.random.randn(n,d)
+        else:
+            A = np.zeros((n*d,)) # start off as array then reshape
+            num_non_zeros = np.int(density*n*d)
+            cauchy_rvs = np.random.randn(num_non_zeros,) / np.random.randn(num_non_zeros,)
+            non_zero_ids = np.random.choice(n*d, np.int(density*n*d), replace=False)
+            for i in range(len(non_zero_ids)):
+                A[non_zero_ids[i]] = cauchy_rvs[i]
+            A.reshape((n,d))
+        return A

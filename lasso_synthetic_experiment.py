@@ -54,6 +54,7 @@ def experiment_sklearn_vs_sketch_time_d(n):
     sketch_factor = param_grid['sketch_factors']
     trials = param_grid['num trials']
     sklearn_lasso_bound = 10
+    ihs_max_iters = np.int(np.ceil(np.log10(n)))
 
     lasso_time = 0
 
@@ -95,23 +96,53 @@ def experiment_sklearn_vs_sketch_time_d(n):
 
             elif method is "classical":
                 print("TESTING CLASSICAL SKETCH")
+                sketch_time, solve_time = 0,0
+                sklearn_error, truth_error, obj_val = 0,0,0
+
+                for i in range(trials):
+                    classical_sketch = ClassicalSketch(data=dense_X, targets=y,
+                                            sketch_dimension=sketch_factor*ihs_max_iters*d,
+                                            sketch_type="CountSketch",
+                                            random_state=param_grid["random_state"])
+                    x_sketch = classical_sketch.solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound})
+                    sklearn_error += 0.5*np.linalg.norm(X@(x_sketch-x_opt),ord=2)**2
+                    truth_error += 0.5*np.linalg.norm(X@(x_sketch-truth),ord=2)**2
+                    obj_val += original_lasso_objective(X,y,sklearn_lasso_bound,x_sketch)
+
+                mean_sklearn_error = sklearn_error/trials
+                mean_truth_error = truth_error/trials
+                mean_obj_val = obj_val/trials
+                print("Mean sklearn error: {}".format(mean_sklearn_error))
+                print("Mean truth error: {}".format(mean_truth_error))
+                print("Mean objective value distortion: {}".format(np.abs(mean_obj_val-f_opt)/f_opt))
+                results[method][d] = {"error to sklearn"   : mean_sklearn_error,
+                                      "error to truth"     : mean_truth_error,
+                                      "objective val"      : mean_obj_val}#, #original_lasso_objective(X,y,sklearn_lasso_bound,x0),
+                                      # "setup time"         : mean_setup_time, #mean_setup_time,
+                                      # "sketch_time"        : mean_sketch_time, #mean_sketch_time,
+                                      # "optimisation time"  : mean_opt_time, #mean_opt_time,
+                                      # "total time"         : mean_setup_time + mean_sketch_time + mean_opt_time, #mean_setup_time+mean_sketch_time+mean_opt_time,
+                                      # "num iters"          : mean_n_iters}
+
             else:
                 total_setup_time, total_sketch_time, total_opt_time, total_n_iters = 0,0,0,0
                 sklearn_error, truth_error, total_obj_val = 0,0,0
-                x_hat = np.zeros((d,))
                 for i in range(trials):
                     print("Trial ", i)
                     total_iters = 0
                     #print("Testing {} iterations for IHS".format(1+np.int(np.ceil(np.log(n)))))
+
+
+
                     ihs_lasso = IHS(data=dense_X, targets=y, sketch_dimension=sketch_factor*d,
-                                    sketch_type=method,number_iterations=np.int(np.ceil(np.log10(n))),
+                                    sketch_type=method,number_iterations=ihs_max_iters,
                                     data_rows=rows,data_cols=cols,data_vals=vals,
                                     random_state=param_grid["random_state"])
                     x0, setup_time, sketch_time, opt_time, n_iters = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound}, timing=True)
                     print("Sketch time on ({},{}) is {}".format(n,d,sketch_time))
                     print("N iters required {}".format(n_iters))
-                    sklearn_error += np.linalg.norm(X@(x0-x_opt),ord=2)**2
-                    truth_error += np.linalg.norm(X@(x0-truth),ord=2)**2
+                    sklearn_error += 0.5*np.linalg.norm(X@(x0-x_opt),ord=2)**2
+                    truth_error += 0.5*np.linalg.norm(X@(x0-truth),ord=2)**2
                     total_obj_val += original_lasso_objective(X,y,sklearn_lasso_bound,x0)
                     total_n_iters += n_iters
                     total_setup_time += setup_time

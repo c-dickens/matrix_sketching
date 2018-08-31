@@ -59,7 +59,9 @@ class TestClassicalSketch(unittest.TestCase):
         Use num_trials for averging and check that the approximation error
         decreases as the sketch size is increased.'''
         print('TESTING UNCONSTRAINED REGRESSION')
-        X,y,coef = make_regression(n_samples = 5000, n_features = 50, noise=5.0, coef=True)
+        n=5000
+        d=50
+        X,y,coef = make_regression(n_samples=n, n_features=d, noise=5.0, coef=True)
         num_trials = 10
         sketch_size_1 = 100
         sketch_size_2 = 250
@@ -80,10 +82,10 @@ class TestClassicalSketch(unittest.TestCase):
                                                     random_state=random_seed)
                 sketch_x = sketch_and_solve.solve()
                 #print("Sketched weights: {}".format(sketch_x))
-                cost_approx = (1/subset_size)*np.linalg.norm(X@sketch_x - y)**2
+                cost_approx = (0.5/n)*np.linalg.norm(X@sketch_x - y)**2
                 #print("Approx cost: {}".format(cost_approx))
                 cost_error1 += np.abs(cost_approx - true_cost)/true_cost
-                sol_error1  += (1/subset_size)*np.linalg.norm(X@(sketch_x-true_x))**2
+                sol_error1  += (0.5/n)*np.linalg.norm(X@(sketch_x-true_x))**2
 
             for trial in range(num_trials):
                 sketch_and_solve = ClassicalSketch(data=X, targets=y,
@@ -92,10 +94,10 @@ class TestClassicalSketch(unittest.TestCase):
                                                     random_state=random_seed)
                 sketch_x = sketch_and_solve.solve()
                 #print("Sketched weights: {}".format(sketch_x))
-                cost_approx = (1/subset_size)*np.linalg.norm(X@sketch_x - y)**2
+                cost_approx = (0.5/n)*np.linalg.norm(X@sketch_x - y)**2
                 #print("Approx cost: {}".format(cost_approx))
                 cost_error2 += np.abs(cost_approx - true_cost)/true_cost
-                sol_error2  += (1/subset_size)*np.linalg.norm(X@(sketch_x-true_x))**2
+                sol_error2  += (0.5/n)*np.linalg.norm(X@(sketch_x-true_x))**2
 
             for trial in range(num_trials):
                 sketch_and_solve = ClassicalSketch(data=X, targets=y,
@@ -104,10 +106,10 @@ class TestClassicalSketch(unittest.TestCase):
                                                     random_state=random_seed)
                 sketch_x = sketch_and_solve.solve()
                 #print("Sketched weights: {}".format(sketch_x))
-                cost_approx = (1/subset_size)*np.linalg.norm(X@sketch_x - y)**2
+                cost_approx = (0.5/n)*np.linalg.norm(X@sketch_x - y)**2
                 #print("Approx cost: {}".format(cost_approx))
                 cost_error3 += np.abs(cost_approx - true_cost)/true_cost
-                sol_error3  += (1/subset_size)*np.linalg.norm(X@(sketch_x-true_x))**2
+                sol_error3  += (0.5/n)*np.linalg.norm(X@(sketch_x-true_x))**2
 
             cost_error1 /= num_trials
             sol_error1 /= num_trials
