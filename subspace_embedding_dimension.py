@@ -39,22 +39,27 @@ def experiment_error_vs_sampling_factor(n, d, noise='gaussian',density=0.1):
     sketching dimension m = gamma*d where d is the dimensionality of the data.
     '''
 
-    for dist in ['gaussian', 'cauchy']:
-        print("Testing {} distribution".format(dis))
+    for dist in ['cauchy','power', 'gaussian', 'exponential', 'uniform']:
+        print("Testing {} distribution".format(dist))
         A = generate_random_matrices(n,d,distribution=dist)
+        Q,R = np.linalg.qr(A)
+        lev_scores = np.linalg.norm(Q,axis=1,ord=2)*2
+        coherence = np.max(lev_scores)
+        least_lev = np.min(lev_scores)
+        print("Largest leverage score: {}".format(coherence))
+        print("Least leverage score: {}".format(least_lev))
+        print("Lev score deviation: {}".format(coherence/least_lev))
         true_covariance = A.T@A
         true_norm = np.linalg.norm(true_covariance,ord='fro')
         true_rank = np.linalg.matrix_rank(A)
         print("Rank of test matrix: {}".format(true_rank))
-        sampling_factors = 1 + np.linspace(0.01,25.0,10)
+        sampling_factors = 1 + np.linspace(0.05,0.2,3)
         print(sampling_factors)
         sketch_dims = [np.int(sampling_factors[i]*d) for i in range(len(sampling_factors))]
         print(sketch_dims)
         # output dicts
         distortions = {sketch : {} for sketch in sketch_functions.keys()}
-        #
-        #
-        print("Entering loop")
+
         for factor in sampling_factors:
             for sketch in sketch_functions.keys():
                 #if sketch is "Gaussian":
@@ -76,26 +81,51 @@ def experiment_error_vs_sampling_factor(n, d, noise='gaussian',density=0.1):
                     #print("Approx ratio: {}".format(true_norm/approx_norm))
                     #print("Update val:{}".format(np.abs(approx_norm-true_norm) / true_norm))
                     #approx_factor += np.abs(approx_norm-true_norm)/true_norm
-                distortions[sketch][factor] = error/n_trials
                 num_fails = n_trials - np.sum(rank_tests)
-                print("{} of the trials were rank deficient".format(num_fails))
+                distortions[sketch][factor] = {'mean distortion': error/n_trials,
+                                                'rank failures' : num_fails}
+
+                #distortions[sketch][factor]['num rank fails'] = num_fails
+                print("{} of the trials were rank deficient".format(np.int(num_fails)))
         print(distortions)
 
-        fig, ax = plt.subplots()
+
+        fig, ax = plt.subplots(figsize=(12,8))
 
         for sketch in sketch_functions.keys():
             my_colour = plotting_params[sketch]['colour']
             my_marker = plotting_params[sketch]['marker']
-            ax.plot(sampling_factors, distortions[sketch].values(), label=sketch, color=my_colour, marker=my_marker)
-        ax.set_xlabel('Sampling factor')
-        ax.set_ylabel('Distortion')
-        ax.legend(title="{}".format(dist),frameon=False)
+            my_line = plotting_params[sketch]['line_style']
+            my_title = dist.capitalize()
+            #print(distortions[sketch])
+            #print("Vals ", distortions[sketch].values())
+            x_vals = np.array(list(distortions[sketch].keys())) #sampling factor for x axis
+            y_vals = np.array([distortions[sketch][key]['mean distortion'] for key in x_vals])
+            # ax.scatter(x_vals, y_vals)
+
+            # rank_fail_check[i] is 1 if sample factor i gave a rank fail
+            rank_fail_check = np.array([distortions[sketch][key]['rank failures'] for key in x_vals])
+            bad_ids = rank_fail_check[rank_fail_check > 0] #np.where(rank_fail_check > 0)
+            bad_x = x_vals[rank_fail_check > 0]
+            bad_y = y_vals[rank_fail_check > 0]
+            good_x = x_vals[rank_fail_check == 0]
+            good_y = y_vals[rank_fail_check == 0]
+            my_marker_size = [30*i for i in bad_ids]
+            ax.scatter(bad_x, bad_y, color=my_colour, marker='x', s=my_marker_size)
+            ax.scatter(good_x, good_y, color=my_colour, marker=my_marker)
+            ax.plot(x_vals, y_vals, color=my_colour, linestyle=my_line, label=sketch)
+            ax.legend(title=my_title,frameon=False)
+        ax.set_xlabel('Sampling factor ($\gamma$)')
+        ax.set_ylabel('Distortion ($\epsilon$)')
+        ax.set_ylim(bottom=0)
+        ax.grid()
+        # #
         plt.show()
 
     return distortions
 
 def main():
-    experiment_error_vs_sampling_factor(50000,20)
+    experiment_error_vs_sampling_factor(2500,1000)
 
 if __name__=='__main__':
     main()

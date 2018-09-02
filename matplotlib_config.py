@@ -5,6 +5,7 @@ matplotlib config file for plots.
 import matplotlib as mpl
 mpl.use('TkAgg')
 #mpl.use('Agg')
+#mpl.use('ps')
 import matplotlib.pyplot as plt
 #from matplotlib import rc
 
@@ -24,8 +25,9 @@ def update_rcParams():
     # This mpl style is from the UCSC BME163 class.
     plt.rcParams.update({
         #'pgf.texsystem'       : 'pdflatex',
+        #'backend'             : 'ps',
         'font.size'           : 12.0      ,
-        #'font.family'         : 'DejaVu Sans',
+        'font.family'         : 'DejaVu Sans',
         'xtick.major.size'    : 4        ,
         'xtick.major.width'   : 0.75     ,
         'xtick.labelsize'     : 12.0      ,
@@ -40,7 +42,7 @@ def update_rcParams():
         'ytick.minor.pad'     : 2        ,
         'savefig.dpi'         : 900      ,
         'axes.linewidth'      : 0.75     ,
-        #'text.usetex'         : True     ,
+        'text.usetex'         : True     ,
         'text.latex.unicode'  : False     })
 
 update_rcParams()

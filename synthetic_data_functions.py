@@ -2,6 +2,7 @@
 Synthetic data generators
 '''
 import numpy as np
+import scipy.stats
 from scipy.sparse import random
 from scipy.sparse import coo_matrix
 from sklearn.preprocessing import StandardScaler
@@ -45,14 +46,25 @@ def generate_lasso_data(m, n, data_density=0.1, sigma=5, sol_density=0.2):
     #new_y = scaler.transform(Y)
     return sparse_X, dense_X, Y, beta_star
 
-def generate_random_matrices(n,d,density=0.1, distribution='gaussian'):
+def generate_random_matrices(n,d,density=1.0, distribution='gaussian'):
     '''Function to generate random matrices from various distributions.'''
 
     if distribution is 'gaussian':
-        return random(n,d,density).toarray()
+        if density < 1.0:
+            return random(n,d,density).toarray()
+
+        else:
+            return np.random.randn(n,d)
+
+    elif distribution is "power":
+        return scipy.stats.powerlaw.rvs(5,size=(n,d))
+    elif distribution is "uniform":
+        return scipy.stats.uniform.rvs(size=(n,d))
+    elif distribution is "exponential":
+        return scipy.stats.expon.rvs(size=(n,d))
     elif distribution is 'cauchy':
         # if density > 0.5:
-        A = np.random.randn(n,d) / np.random.randn(n,d)
+        A = scipy.stats.cauchy.rvs(size=(n,d))
         # else:
         #     A = np.zeros((n*d,)) # start off as array then reshape
         #     num_non_zeros = np.int(density*n*d)
