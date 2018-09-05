@@ -18,4 +18,3 @@ for data_name in all_datasets.keys():
     #print(os.path.isfile('data/' + file_name + '_sparse.npz'))
     if os.path.isfile('data/' + file_name + '_sparse.npz'):
         datasets[data_name]['filepath_sparse'] = 'data/' + file_name + '_sparse.npz'
-#print(datasets)

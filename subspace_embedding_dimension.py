@@ -14,9 +14,7 @@ from timeit import default_timer
 from lib import countsketch, srht, gaussian, classical_sketch
 from lib import ClassicalSketch
 import datasets_config
-from joblib import Parallel, delayed
-from my_plot_styles import plotting_params
-from experiment_parameter_grid import param_grid
+from experiment_parameter_grid import subspace_embedding_exp_setup, sketch_names, sketch_functions
 from synthetic_data_functions import generate_random_matrices
 
 
@@ -25,27 +23,39 @@ import matplotlib.pyplot as plt
 from my_plot_styles import plotting_params
 
 
-random_seed = 400
+random_seed = subspace_embedding_exp_setup['random_state']
 np.random.seed(random_seed)
-sketch_names = ["CountSketch", "SRHT", "Gaussian"]
-sketch_functions = {"CountSketch": countsketch.CountSketch,
-                    "SRHT" : srht.SRHT,
-                    "Gaussian" : gaussian.GaussianSketch}
+# sketch_names = ["CountSketch", "SRHT", "Gaussian"]
+# sketch_functions = {"CountSketch": countsketch.CountSketch,
+#                     "SRHT" : srht.SRHT,
+#                     "Gaussian" : gaussian.GaussianSketch}
 
-n_trials = 5
+
 
 def experiment_error_vs_sampling_factor(n, d, noise='gaussian',density=0.1):
     '''Measure the error as the sampling factor gamma is varied for the
     sketching dimension m = gamma*d where d is the dimensionality of the data.
     '''
+    dists_2_test = ['cauchy','power', 'gaussian', 'exponential', 'uniform']
+    results = {}
+    n_trials = subspace_embedding_exp_setup['num trials']
 
-    for dist in ['cauchy','power', 'gaussian', 'exponential', 'uniform']:
+    for dist_name in dists_2_test:
+        results[dist_name] = {}
+
+    # Other miscellaneios information which might need to be saved
+    results['num trials'] = n_trials
+    results['aspect ratio'] = d/n
+
+    for dist in dists_2_test:
         print("Testing {} distribution".format(dist))
         A = generate_random_matrices(n,d,distribution=dist)
         Q,R = np.linalg.qr(A)
         lev_scores = np.linalg.norm(Q,axis=1,ord=2)*2
         coherence = np.max(lev_scores)
         least_lev = np.min(lev_scores)
+        results[dist]['coherence'] = coherence
+        results[dist]['min leverage score'] = least_lev
         print("Largest leverage score: {}".format(coherence))
         print("Least leverage score: {}".format(least_lev))
         print("Lev score deviation: {}".format(coherence/least_lev))
@@ -53,7 +63,7 @@ def experiment_error_vs_sampling_factor(n, d, noise='gaussian',density=0.1):
         true_norm = np.linalg.norm(true_covariance,ord='fro')
         true_rank = np.linalg.matrix_rank(A)
         print("Rank of test matrix: {}".format(true_rank))
-        sampling_factors = 1 + np.linspace(0.05,0.2,3)
+        sampling_factors = 1 + np.linspace(0.025,0.125,5)
         print(sampling_factors)
         sketch_dims = [np.int(sampling_factors[i]*d) for i in range(len(sampling_factors))]
         print(sketch_dims)
@@ -62,9 +72,7 @@ def experiment_error_vs_sampling_factor(n, d, noise='gaussian',density=0.1):
 
         for factor in sampling_factors:
             for sketch in sketch_functions.keys():
-                #if sketch is "Gaussian":
-                #    continue
-                sketch_size = np.int(factor*d)
+                sketch_size = np.min([np.int(factor*d), n])
                 error = 0
                 rank_tests = np.zeros((n_trials,))
                 for trial in range(n_trials):
@@ -76,56 +84,28 @@ def experiment_error_vs_sampling_factor(n, d, noise='gaussian',density=0.1):
                     if sketch_rank == true_rank:
                         rank_tests[trial] = 1
                     approx_covariance = S_A.T@S_A
-                    #approx_norm = np.linalg.norm(approx_covariance - true_covariance,ord='fro')
                     error += np.linalg.norm(true_covariance - S_A.T@S_A, ord='fro') / true_norm
-                    #print("Approx ratio: {}".format(true_norm/approx_norm))
-                    #print("Update val:{}".format(np.abs(approx_norm-true_norm) / true_norm))
-                    #approx_factor += np.abs(approx_norm-true_norm)/true_norm
                 num_fails = n_trials - np.sum(rank_tests)
                 distortions[sketch][factor] = {'mean distortion': error/n_trials,
                                                 'rank failures' : num_fails}
 
-                #distortions[sketch][factor]['num rank fails'] = num_fails
                 print("{} of the trials were rank deficient".format(np.int(num_fails)))
-        print(distortions)
-
-
-        fig, ax = plt.subplots(figsize=(12,8))
-
-        for sketch in sketch_functions.keys():
-            my_colour = plotting_params[sketch]['colour']
-            my_marker = plotting_params[sketch]['marker']
-            my_line = plotting_params[sketch]['line_style']
-            my_title = dist.capitalize()
-            #print(distortions[sketch])
-            #print("Vals ", distortions[sketch].values())
-            x_vals = np.array(list(distortions[sketch].keys())) #sampling factor for x axis
-            y_vals = np.array([distortions[sketch][key]['mean distortion'] for key in x_vals])
-            # ax.scatter(x_vals, y_vals)
-
-            # rank_fail_check[i] is 1 if sample factor i gave a rank fail
-            rank_fail_check = np.array([distortions[sketch][key]['rank failures'] for key in x_vals])
-            bad_ids = rank_fail_check[rank_fail_check > 0] #np.where(rank_fail_check > 0)
-            bad_x = x_vals[rank_fail_check > 0]
-            bad_y = y_vals[rank_fail_check > 0]
-            good_x = x_vals[rank_fail_check == 0]
-            good_y = y_vals[rank_fail_check == 0]
-            my_marker_size = [30*i for i in bad_ids]
-            ax.scatter(bad_x, bad_y, color=my_colour, marker='x', s=my_marker_size)
-            ax.scatter(good_x, good_y, color=my_colour, marker=my_marker)
-            ax.plot(x_vals, y_vals, color=my_colour, linestyle=my_line, label=sketch)
-            ax.legend(title=my_title,frameon=False)
-        ax.set_xlabel('Sampling factor ($\gamma$)')
-        ax.set_ylabel('Distortion ($\epsilon$)')
-        ax.set_ylim(bottom=0)
-        ax.grid()
-        # #
-        plt.show()
-
-    return distortions
+        results[dist]['experiment'] =  distortions
+    return results
 
 def main():
-    experiment_error_vs_sampling_factor(2500,1000)
+
+    range_to_test = subspace_embedding_exp_setup['aspect ratio range'] #np.concatenate((np.linspace(0.01,0.1,10),np.linspace(0.125, 0.5,4)))
+    for n in subspace_embedding_exp_setup['rows']:
+        for scale in range_to_test:
+            d = np.int(scale*n)
+            print("Testing {} and {}".format(n,d))
+            exp_results = experiment_error_vs_sampling_factor(n,d)
+            file_name = 'subspace_embedding_dimension_' + str(n) + "_" + str(d)
+            np.save('figures/' + file_name + '.npy', exp_results)
+            with open('figures/' + file_name + '.json', 'w') as outfile:
+                json.dump(exp_results, outfile)
+            print(exp_results)
 
 if __name__=='__main__':
     main()

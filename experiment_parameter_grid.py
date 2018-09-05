@@ -13,7 +13,15 @@ param_grid = {
         'density' : np.linspace(0.05,1.0, num=10)
     }
 
+subspace_embedding_exp_setup = {
+    'random_state' : 400,
+    'num trials'   : 5,
+    'aspect ratio range' : np.linspace(0.1,0.5, 5),
+    'rows'               : [2**11]
+}
+
 ihs_sketches = ["CountSketch", "SRHT"]
 sketch_functions = {"CountSketch": countsketch.CountSketch,
                     "SRHT" : srht.SRHT,
                     "Gaussian" : gaussian.GaussianSketch}
+sketch_names = ["CountSketch", "SRHT", "Gaussian"]

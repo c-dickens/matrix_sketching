@@ -397,6 +397,28 @@ We exploit a fast library for computing the Hadamard
 Transform\footnote{https://bitbucket.org/vegarant/fastwht} and the Numba
 library\footnote{https://numba.pydata.org/} to accelerate the Python code
 so that it runs at comparable speed.
+We test our algorithms on real and synthetic data which is summarised in Table
+\ref{table: data-facts}.
+
+\begin{table}[ht]
+\centering
+\begin{adjustbox}{width=1\textwidth}
+%\small
+
+\begin{tabular}{|c|c|c|c|c|c|c|}
+  \hline
+Dataset                   & Dimensionality       &   Aspect ratio $\frac{d}{n}$ & Density $\nnz{A}/nd$ &  Coherence Ratio & Rank & Source \\
+\hline
+YearPredictionsMSD       & $(515345,90)$         &   $1.7 \times 10^{-4} $      &  1.0                  &                  &     &  \cite{Dua:2017}             \\
+Rail2586                 & $(923269, 2586)$      &   $2.7 \times 10^{-3} $      &  0.003                &                  &     &   \cite{davis2011university} \\
+California Housing       & $(20000, 17)$         &   $8.5 \times 10^{-4} $      &  0.76                 &                  &     &   \cite{geron2017hands}      \\
+% US Census                & $(5000000,10)$                 &            &            &           &          &      &         &            & \\
+\hline
+\end{tabular}
+\end{adjustbox}
+\caption{Comparison of CountSketch and SRHT on real datasets}
+\label{table: data-facts}
+\end{table}
 
 
 
