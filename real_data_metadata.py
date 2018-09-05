@@ -34,45 +34,22 @@ def main():
             print("Ignoring this one.")
             continue
 
-        try:
-            sparse_file = datasets[data]['filepath_sparse']
-            sparse_flag = True
-        except KeyError:
-            print("No sparse representation")
+        dense_data = np.load(input_file)
+        n,d = dense_data.shape
+        if (n,d) == (1,2):
+            # this checks if the saved file is csr matrix and if so
+            # continues the loop as the code needs to be different.
+            print("SAVED IN SPARSE FORMAT SO SKIPPING FOR NOW.")
+            continue
+        aspect_ratio = d/n
+        nnz = np.count_nonzero(dense_data)
+        density = nnz/(n*d)
+        q,_ = np.linalg.qr(dense_data)
+        lev_scores = np.linalg.norm(q, axis=1)**2
+        coherence = np.max(lev_scores)
+        coherence_ratio = coherence / np.min(lev_scores)
+        rank = np.linalg.matrix_rank(dense_data)
 
-        if sparse_flag:
-            print("Read in sparse format for {} as well as dense".format(data))
-            sparse_data = load_npz(sparse_file).tocsr()
-            if data is "census":
-                cols2keep = [i for i in range(sparse_data.shape[1]) if i != 1]
-                sparse_data = sparse_data[:,cols2keep]
-            sparseX = sparse_data[:,:-1]
-            n,d = sparseX.shape
-            aspect_ratio = d/n
-            density = sparseX.count_nonzero()/(n*d)
-            u,_,_ = sp.sparse.linalg.svds(sparseX)
-            lev_scores = np.linalg.norm(u,axis=1)**2
-            coherence = np.max(lev_scores)
-
-            sparseX = coo_matrix(sparseX)
-            sparsey = sparse_data[:,-1]
-            scaler = StandardScaler(with_mean=False)
-            sX = scaler.fit_transform(sparseX)
-            sX = coo_matrix(sX)
-            dense_data = np.load(input_file)
-            X_row, X_col, X_data = sX.row, sX.col, sX.data
-
-        else:
-            dense_data = np.load(input_file)
-            n,d = dense_data.shape
-            aspect_ratio = d/n
-            nnz = np.count_nonzero(dense_data)
-            density = nnz/(n*d)
-            q,_ = np.linalg.qr(dense_data)
-            lev_scores = np.linalg.norm(q, axis=1)**2
-            coherence = np.max(lev_scores)
-            coherence_ratio = coherence / np.min(lev_scores)
-            rank = np.linalg.matrix_rank(dense_data)
 
         print("Shape: {}".format((n,d)))
         print("Aspect ratio : {}".format(aspect_ratio))
