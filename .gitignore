@@ -11,7 +11,7 @@ tests/timings.ipynb
 
 # Ignore figures directory
 figures
-!*.py # except plotting scripts
+figures/*.py # except plotting scripts
 
 # ignore paper/ except the following
 !/paper
