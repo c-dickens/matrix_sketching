@@ -1,0 +1,139 @@
+%!TEX root = sketching-convex-ols.tex
+
+
+Although the IHS approach was studied empirically in \cite{pilanci2016iterative}
+there was not a comparison of different sketching methods within the iterative
+procedure.
+This is of utmost importance to the practitioner because if one were to use a
+Gausian sketch at every iteration then a prohibitive $O(nmd)$ time cost
+would be inflicted per iteration.
+Similarly, if one posesses sparse data then it was not known how a projection
+which exploits sparsity behaves in comparison to the other sketching methods.
+As such, we seek to understand the performance of the sketching methods
+and compare the relative merits and tradeoffs.
+Although the CountSketch performs favourably compared to the SRHT from a time
+perspective, it does appear to have slightly more distortion variation in the
+subspace embedding condition compared to both other methods.
+Accordingly, one needs to understand whether this distortion is prohibitive in
+the IHS scheme when using the CountSketch compared to other methods.
+To aid our understanding of each of the sketching methods within the IHS we
+first
+reproduce some of the previous results from \cite{pilanci2016iterative} in order
+to understand how each of the sketches behave.
+This behaviour in this set of experiments is roughly similar to that found in
+\cite{pilanci2016iterative}, although on occasion we need slightly different
+parameter settings - this remains consistent with the theory, however.
+
+The experiments in this section use synthetic data $A \in \R^{n \times d}$
+whose entries are drawn from standard normal distribution.
+A ground truth vector $x^*$ is chosen at random and then standard Gaussian
+noise is added $\omega_i$ for $i=1, \ldots, n$.
+The given target vector is then $b = Ax^* + \omega$
+
+
+
+
+\textbf{Error compared to data size.}
+The first experiment seeks to understand how the error responds when the size of
+the data is increased.
+The dimensionality of the dataset $A$ is fixed at $d=10$ and then more samples
+are added with $n \in \{100 \times 2^i \text{ for } i \in \{3,4,\ldots,14\} \}$.
+The number of iterations is fixed at $N=1+\log n$ and a sketch size for the IHS
+is fixed at $m=5d$.
+The experiments are repeated (insert number) times and the mean has been taken.
+To maintain a comparison across a the same number of random projections, the
+sketch-and-solve model is instantiated with sketch dimension set at $m'=Nmd$.
+As shown in Figure \ref{fig: error-vs-row-dim}, the sketch-and-solve approach
+is a suboptimal estimator of the true solution and this is further reflected in
+the prediction error.
+Despite only a modest increase in the number of iterations as $n$ grows larger,
+the IHS estimates are approaching the optimal estimator as expected.
+All three methods descend to the error at a rate consistent with the theory
+(Proposition \ref{prop: ihs-error-bound}) and are each comparable with the
+optimal estimator.
+There appears to be little difference between the choice of random projection in
+this setup and the faster CountSketch performs comparably to the Gaussian
+ and
+SRHT sketches which provides the first evidence that a cheaper to compute
+projection may well prove fruitful.
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.75,keepaspectratio]{verify_ihs_error_num_rows}
+  \caption{Solution Error vs Row Dimension and Prediction Error vs Row Dimension}
+  \label{fig: error-vs-row-dim}
+\end{figure}
+
+
+\textbf{Solution Error vs Number of Iterations}
+For this experiment we sampled data as above with $(n,d) = (6000,200)$
+and tested sketch sizes $m = \gamma d$ for $\gamma = 4,6,8$.
+The IHS method was run for $T=5,10,15, \ldots, 40$ iterations and for each
+different sketch the error to the optimal estimator was measured (averaged
+over ... repeats).
+The results are displayed in Figure \ref{fig: ihs-sketch-errors}.
+All three methods converge geometrically towards the optimal solution with
+the rate increasing when larger $\gamma$ is used - this is illustrated in
+Figure \ref{fig: error-to-lsq}.
+The CountSketch follows a similar path to both other sketching methods
+with slightly more (but not a prohibitive amount of) variation.
+All three methods are relatively consistent in their performance however and
+from this perspective it does not appear that a particular sketch is preferable
+over any other.
+Simiarly, in Figure \ref{fig: error-to-truth} we see how quickly the sketches
+allow the IHS to converge to the optimal error between an estimator and the
+ground truth (nb. for this experiment it is roughly $\log \sqrt{200/6000}
+\approx -1.7$).
+Again, as expected, a larger $\gamma$ enables faster convergence but from
+this perspective the SRHT appears most stable with the least variation across
+the iterations: both other methods seem to oscillate roughly a small constant
+factor either side of the SRHT error.
+
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+    \centering
+        \includegraphics[scale=0.5,keepaspectratio]{verify_ihs_error_to_lsq}
+        \caption{Error to optimal estimator}
+        \label{fig: error-to-lsq}
+    \end{subfigure}%
+    \begin{subfigure}{0.49\textwidth}
+    \centering
+        \includegraphics[scale=0.5,keepaspectratio]{verify_ihs_error_to_truth}
+        \caption{Error to truth}
+        \label{fig: error-to-truth}
+    \end{subfigure}
+    \caption{Solution error (compared to optimal estimator) and Error to
+    ground truth vs number of
+    iterations in Figures \ref{fig: error-to-lsq} and \ref{fig:
+    error-to-truth}, respectively.
+    The constant to the right of the sketch method in the legend
+    is the sampling factor $\gamma$ of the sketch i.e. projection dimension
+    $m = \gamma d$.}
+    \label{fig: ihs-sketch-errors}
+\end{figure}
+
+
+
+
+\textbf{Error compared to dimensionality}
+Here we generated data with $d$ varying across $\{ 16,32,64,128,256 \}$ and
+taking $n = 250d$.
+Again, $T = 1 + \log n$ iterations were used in the IHS with a sampling factor
+of $\gamma=10$ (and $m = \gamma d$); hence the corresponding sketch-and-solve
+sketch dimension is $T \gamma d$.
+The optimal least squares estimator has error which is roughly
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.75,keepaspectratio]{verify_ihs_error_dimension}
+  \caption{Solution error compared to optimal estimator}
+  \label{fig: error-vary-columns}
+\end{figure}
+
+\subsection{Time}
+Vary sparsity.
+\subsection{Space}
+
+\subsection{Distortion}

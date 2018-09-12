@@ -1,0 +1,188 @@
+%!TEX root = main.tex
+
+First we define the distribution of random matrices from which we will sample a
+specific sketch, namely the CountSketch or Sparse Embedding matrices.
+
+Let $S$ be an $m \times n$ random matrix which is drawn according to the CountSketch construction
+as follows:
+
+\begin{enumerate}
+  \item For every column $S^i$ with $i \in [n]$ independently choose a row $h(i)
+  \in \{ 1, 2, \ldots, m \} $ uniformly at random.
+  \item Uniformly choose a random element of $\{ -1, 1 \}$ denoted $\sigma(i)$
+  and set $S_{h(i), i} = \sigma(i)$
+  \item All other $S_{i,j} = 0$
+\end{enumerate}
+The Count Sketch linear transformation from $\R^n \rightarrow \R^m$ can be
+understood as the matrix product $S = BD$ where $B \in \R^{m \times n}$ assigns
+the $n$ rows of $A$ to buckets under the hash function $h$, and $D \in \R^{n \times
+n}$ is a diagonal matrix whose entries are independently chosen Rademacher rvs.
+Observe that this construction has only one non-zero per column and can be
+equivalently computed in a data stream.
+Initialise $S \leftarrow \textbf{0}_{m,d}$ to be the sketch of $A$.
+Upon seeing the matrix index-value triple $(i,j,A_{ij})$ the value $A_{ij}$ is
+mapped to bucket $h(i)$ and the sign is randomly flipped according to $\sigma(\cdot)$
+so that $S$ is updated according to $S_{kj} \leftarrow S_{kj} + \sigma(i)A_{ij}$
+whenever $h(i) = k$.
+
+\begin{mydef} \label{def: subspace-embedding}
+  A matrix $S \in \R^{m \times n}$ is a $(1 \pm \eps)$-subspace embedding for
+  the column space of a matrix $A \in \R^{n \times d}$ provided that for all
+  $x \in \R^d, \| SAx \|_2^2 = (1 \pm \eps) \|Ax \|_2^2$.
+\end{mydef}
+
+\noindent Clarkson and Woodruff showed that this method of matrix sketching with
+$m = O(d^2 / \eps^2 \text{polylog}(d/\eps))$ returns a subspace embedding for $A$
+in time $O(\nnz{A})$ with constant probability
+(this can be boosted to arbitrarily high success probability by repeating $O(\log(1/\delta))$
+times if necessary) \cite{clarkson2013low}.
+Inspecting the update step in Equation (\ref{eq: IHS-iterate}), it is clear that
+the subspace embedding property will be key in the use of Count Sketch within the
+IHS algorithm.
+
+\noindent\textbf{Suboptimality.}
+Before progressing to demonstrating the efficacy of the Count Sketch we show
+that it also suffers from the same suboptimality as other estimators which
+rely upon observing the pair $(SA, Sy)$.
+Fist we introduce the model under which the lower bound holds: let
+$y = Ax$
+
+Unfortunately, this sketch still suffers from the property that
+$\| \E (S^T S S^T)^{-1} S) \|_{\text{op}} \le m/n$ and hence we pick up the following
+sub-optimality Theorem from \cite{pilanci2016iterative}.
+
+\color{red}
+ADD MORE DETAIL HERE ON PARAMETERS IN THEOREM SETTING AND MODEL SETUP.
+ALSO ADD INTUITION ON WHY THIS BOUND IS PROBLEMATIC.
+\begin{thm}(\cite{pilanci2016iterative}) \label{eq: lower-bound-skectch-solve}
+  For any random sketching matrix $S \in \R^{m \times n}$ with $\| \E (S^T S S^T)^{-1} S) \|_{op} \le m/n$
+  any estimator from the ``sketch-and-solve'' framework based on observing  $(SA, Sy)$
+
+  \begin{equation*}
+    \sup_{x^* \in \mathcal{C_0}} \E_{S,w} (\| \hat{x} - x^* \|_A^2) =
+              \Omega \left( \frac{\sigma^2 \log M_{1/2}}{\eta \min\{m,n\}} \right)
+  \end{equation*}
+
+\end{thm}
+\color{black}
+
+Despite the lower bound in Theorem \ref{eq: lower-bound-skectch-solve} we are
+able to prove through the language of subspace
+embeddings that the count sketch can be applied in the IHS.
+The main property is that the rows of the Count Sketch transform are sub-Gaussian
+(proved in Lemma \ref{lem: zero-mean}) and using the fact that inner products
+are sufficiently well-preserved from the subspace embedding property.
+We prove now prove this property in Lemma \ref{lem: cs-subgauss} which allows the
+Count Sketch to slot into the IHS framework.
+
+\begin{mydef}
+  A zero-mean random vector $s \in \R^n$ is 1-sub-Gaussian if for any $u \in \R^n$
+  we have for all $\eps > 0$
+
+  \begin{equation}
+    \prob [ \langle s, u \rangle \ge \eps \| u \|_2 ] \le \exp(-\eps^2/2).
+  \end{equation}
+\end{mydef}
+
+\begin{Lemma}[Rows of CountSketch are sub-Gaussian] \label{lem: cs-subgauss}
+  Let $S$ be an $m \times n$ random matrix sampled according to the CountSketch
+  construction.
+  Then any row $S_i$ of $S$ is 1-sub-Gaussian.
+\end{Lemma}
+
+\begin{proof}
+  Fix a row $S_i$ of $S$ and let $X = \langle S_i, u \rangle$.
+  If either $S_i$ or $u$ is a zero vector then the
+  inequality in the sub-Gaussian definition will always be true so assume that
+  this is not the case.
+  We need the following version of Bernstein's Inequality:
+  when $X$ is a sum of $X_1,\ldots,X_n$ and $|X_j| \le M$ for all $j$ then for
+  any $t > 0$
+
+  \begin{equation} \label{eq: Bernstein}
+    \prob (X > t) \le \exp \left( - \frac{t^2 / 2}{\sum_j \E X_j^2 + Mt/3
+    } \right).
+  \end{equation}
+  Now, $X = \sum_{j=1}^n S_{ij} u_j$ which is a sum of zero-mean random variables.
+  Also, $|X_j| = |S_{ij} u_j| \le \| u \|_2$ for every $j$ and $\E X_j^2 =
+  u_j^2/m$.
+  Taking $t = \eps \| u \|_2$ in Equation (\ref{eq: Bernstein}) and cancelling
+  $\| u \|_2^2$ terms gives
+
+  \begin{equation} \label{eq: countsketch_bernstein}
+    \prob (X > \eps \| u \|_2) \le \exp \left( - \frac{\eps^2 /
+    2}{1/m + \eps /3 } \right)
+    \le \exp(-\eps^2/2).
+  \end{equation}
+  The final inequality holds whenever $1/m + \eps / 3 \le 1$ and indeed this is
+  true whenever $\eps \le 3 - 3/m$.
+  However, since $\eps \in (0,1)$ the inequality holds
+  for all choices of $\eps$ provided $m>1$.
+
+\end{proof}
+
+\subsection{Applying the Subspace Embedding}
+In order to control the error with respect to the optimal solution $x^*$ we
+define the \textit{tangent cone} as the following set which contains the error
+vector $\hat{v} = A(\hat{x} - x^*)$:
+
+  \begin{equation} \label{eq: tangent-cone}
+    \mathcal{K} = \{ v \in \R^d : v = tA(x - x^*) \text{for some $t \ge 0$}, x\in \mathcal{C} \}.
+  \end{equation}
+
+\noindent The following two quantities measure the distortion induced by a random linear
+transform.
+Let $u \in \R^n$ be a fixed vector of unit norm and let $\mathcal{S}^{n-1}$ denote
+the set of all unit norm vectors in $\R^n$.
+
+\begin{equation} \label{eq: sketch-lower-distortion}
+  Z_1(S) = \inf_{v \in \mathcal{K} \cap \mathcal{S}^{n-1}} \| Sv \|_2^2
+\end{equation}
+
+\begin{equation} \label{eq: sketch-upper-distortion}
+ Z_2(S) = \sup_{v \in \mathcal{K} \cap \mathcal{S}^{n-1}} \left| \langle u,v \rangle
+                 - \langle Su, Sv \rangle \right|
+\end{equation}
+Both of the above two quantities can be bounded through the properties of the
+subspace embedding: since $v$ is a unit vector in the column span of $A$ we have
+$Z_1(S) = (1 - \eps) $.
+The upper bound follows from the proof that the Count Sketch induces a subspace
+embedding by applying the approximate matrix product primitive.
+Although appears to be the Johnson-Lindenstrauss condition, this cannot be applied
+because the Count Sketch preserves only an exponentially large family of vectors
+in $\R^d$ as opposed to all vectors, hence the need to resort to the matrix product
+argument.
+
+% \begin{table}
+%   \centering
+% \begin{tabular}{ |c|c|c|c| }
+%  \hline
+%  Transform & Sketch time & Solve time & Sketch Dimension ($m$)  \\
+%  \hline
+%  No Sketch &      n/a               &   $O(nd^2)$  & n/a \\
+%  Gaussian  &     $O(mnd)$           &    $O(md^2)$                      &  $\tilde{O}(d)$\\
+%  SRHT      &     $O(nd \log d)$       &    $O(md^2)$                      &  $\tilde{O}(d \log d)$ \\
+%  CountSketch &   $O(\nnz{A})$       &    $O(md)$                      & $\tilde{O}(d^2)$\\
+%  \hline
+% \end{tabular}
+% \caption{Comparison of update times. nb. the Gaussian projection offers no computational
+% savings as it takes time roughly $O(nd^2)$ to apply.}
+% \label{fig: update-times}
+% \end{table}
+
+\begin{table}
+  \centering
+\begin{tabular}{ |c|c|c|c| }
+ \hline
+ Method             & Sketch time             & Solve time   & Comments  \\
+ \hline
+ Naive              &      n/a                &   $O(nd^2)$  & Slow for large $n$. \\
+ Sketch-and-Solve  &     $\tilde{O}(nd)$      &    $O(md^2)$ &  Sub-optimal estimator. \\
+ IHS              &     $O(nd \log d)$     &    $O(md^2)$ &  $A$ must be stored. \\
+ This work.       &   $O(\nnz{A})$           &    $O(md^2)$   &  Can be streamed.\\
+ \hline
+\end{tabular}
+\caption{Comparison of update times. nb. the Gaussian projection offers no computational
+savings as it takes time roughly $O(nd^2)$ to apply.}
+\label{fig: update-times}
+\end{table}

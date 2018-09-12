@@ -1,0 +1,131 @@
+%!TEX root = main.tex
+
+Here we show empirical evidence to show that the Count Sketch transform is
+an efficient method for oblivious dimensionality reduction.
+For the experiments we have generated synthetic data of varying sizes and measured
+time complexity, space complexity, and accuracy tradeoffs for a variety of parameter
+settings.
+Varied parameters included $n$, the number of samples in the data, $d$, the
+dimensionality of the data, and $\rho$, the density of the data, and the sketch
+sizes used.
+Our implementation of the Count Sketch shows the transform
+can be computed as the data is streamed to avoid expensive matrix products.
+
+\begin{figure}
+  \includegraphics[width=\textwidth]{figures/sparsity-time-1e5.pdf}
+  \caption{Time to compute summary vs data density. Legend shows data dimensionality
+          and the type of sketch used.  Number of samples: 50000.}
+  \label{fig: summary-time-vs-density}
+\end{figure}
+
+\section{Preliminary Experiments}
+In this section we detail how the projection dimensions need to be set in order
+to obtain favourable performance.
+This involves measuring the time taken to apply the projection and the distortion
+induced by the projection for given data matrices.
+
+
+\subsection{Time Comparisons}
+
+\noindent
+\textbf{Summary Time Complexity vs Data Density.}
+Figure \ref{fig: summary-time-vs-density} shows how the time taken to compute the
+summaries scales with the density of the data.
+A random matrix with standard normal entries of size $(n,d)$ was sampled where $n$ is fixed
+at 50000 rows and $d \in \{10, 100, 500, 1000\}$.
+Every test matrix was sampled with a given density parameter $\rho \in \{ 0.01,
+0.1, 0.25, 0.5, 1.0 \}$ and the time taken to compute the summary $SA$ has been
+measured.
+The theory suggests that the Count Sketch should scale linearly with the number
+of nonzeros in the data while the SRHT scales independently of the data density:
+indeed, our empirical findings are consistent with this theory.
+Although the Count Sketch clearly scales with the density of the data, this scaling
+does not appear to be strong enough to justify using SRHT over Count Sketch from
+the perspective of time to compute the summary.
+Hence, for a fixed $(d, \rho)$ Count Sketch appears always to be faster as a
+method for dimensionality reduction.
+
+Is this behaviour still true when we need the Count Sketch to be larger?
+For example, set the sketch dimension to roughly $d \log d$ for the SRHT and
+$d^2 \log d$ for the Count Sketch.
+
+\noindent
+\textbf{Solve Time vs Density.}
+
+
+\subsection{Error Comparisons}
+\textbf{Error Metrics}
+The three notions of error that we measure are \textit{solution error},
+\textit{cost approximation} (as introduced in Section \ref{sec: setup}), and
+\textit{mean square error ratio} (MSE).
+The solution error corresponds to how well an approximate weight vector
+$\hat{x}$ estimates the true solution $x^*$ whereas the cost approximation
+measures how far much $f(\hat{x})$ and $f(x^*)$ deviate.
+The two errors are measured as $\| \hat{x} - x^* \|_A^2/\|x^*\|_2^2$ and
+$|f(\hat{x}) - f(x^*)|/f(x^*)$, respectively.
+In the context of train-test splits in ML, the first two quantites examine how
+well an estimator can be used in training relative to the true weights.
+Additionally, we also measure the mean square error ratio which is the ratio of
+the MSE evaluated using the estimated weights and the MSE evaluated using the
+exact weights \textit{on a testing set}.
+This is an alternative metric to compare how the aproximated
+quantities generalise to new datapoints and the intention is to show that a
+suboptimal estimate $\hat{x}$ necessarily yields suboptimal generalisation
+performance.
+
+
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.33\textwidth}
+    \centering
+        \includegraphics[scale=0.33, keepaspectratio]{figures/solution_error_vs_sketch_size.pdf}
+        \caption{Solution Approximation Error}
+        \label{fig: soln-error}
+    \end{subfigure}%
+    \begin{subfigure}{0.33\textwidth}
+    \centering
+        \includegraphics[scale = 0.33,keepaspectratio]{figures/cost_error_vs_sketch_size.pdf}
+        \caption{Cost Approximation Error}
+        \label{fig: cost-error}
+    \end{subfigure}
+    \begin{subfigure}{0.33\textwidth}
+    \centering
+        \includegraphics[scale=0.33,keepaspectratio]{figures/mse_vs_sketch_size.pdf}
+        \caption{MSE Ratio}
+        \label{fig: mse-ratio}
+    \end{subfigure}
+    \caption{Comparing the error metrics as the sketch dimension is increased}
+    \label{fig: error-vs-sketch-synthetic}
+    \end{figure}
+
+\noindent For the results illustrated in Figure \ref{fig: error-vs-sketch-synthetic} we
+generated random synthetic regression dataset of size
+$(125000, 100)$ with a fixed density.
+The training set was a randomly selected 100000 row subset of the data with the
+remaining 25000 rows used for testing.
+For the IHS method only 7 iterations were used and this is sufficient to recover
+the solution as seen in Figure \ref{fig: soln-error}.
+Although there appears to be only a constant factor difference between either of
+the sketching methods (sketch-and-solve compared to IHS) in terms of solution
+approximation error, this has the consequence of a cost approximation and MSE
+ratio which is approximately 20\% worse than the IHS method, as observed in
+Figures \ref{fig: cost-error} and \ref{fig: mse-ratio}.
+
+
+
+
+% \noindent
+% \textbf{Summary Error vs Data Density.}
+% The key reason that the random projection methods work for the IHS is that the
+% matrix-vector product $Ax$ is well-approximated by $SAx$.
+% In Section (ADD THIS AT A LATER DATE) we introduced the notion of the subspace
+% embedding and Figure \ref{fig: update-times} indicates the size of a sketch
+% required to compute such a subspace embedding.
+% Observe that the sketch dimension scales as $O(d^2)$ for the Count Sketch but is
+% a more attractive $d \log d$ for the SRHT.
+% As a result, for summaries of the same size, one would expect the error from the
+% Count Sketch to be at least as large as that of the SRHT in approximating matrix-vector
+% products.
+
+\subsection{Storage Comparisons}

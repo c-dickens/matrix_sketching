@@ -1,0 +1,71 @@
+%!TEX root = sketching-convex-ols.tex
+
+In this experiment we compare how the sparse projection methods compare with
+other sketches in recovering the solution to a popular constrained regression
+problem, the LASSO.
+We test the IHS method on both synthetic and real datasets, showing that an approximate
+estimator can be output in time faster than the commonly used sklearn
+python machine learning library which has comparable performance.
+The synthetic experiments also show parameter ranges for which the IHS method
+is favourable in comparison to the exact method as well as highlighting, again,
+the suboptimality of the sketch-and-solve model.
+
+
+\begin{figure}
+        \centering
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{lasso_time_vs_cols_detailed50000}
+            \caption{$n=50000$}
+            \label{fig: lasso50000}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{lasso_time_vs_cols_detailed100000}
+            \caption{$n=100000$}
+            \label{fig: lasso100000}
+        \end{subfigure}
+        \vskip\baselineskip
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{lasso_time_vs_cols_detailed200000}
+            \caption{$n=200000$}
+            \label{fig: lasso-200000}
+        \end{subfigure}
+        \quad
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{lasso_time_vs_cols_detailed400000}
+            \caption{$n=400000$}
+            \label{fig: lasso-400000}
+        \end{subfigure}
+        \caption{Time (log scale) of the IHS methods vs. Number of columns in
+        the dataset.}
+        \label{fig: lasso-synthetic}
+    \end{figure}
+
+\noindent\textbf{Time Complexity compared to dimensionality.}
+The LASSO method scales as $O(nd^2)$ using the sklearn implementation of the ...
+algorithm.
+In comparison, the IHS method requires the time taken to compute $N$ sketches at
+a cost of $T_{\text{sketch}}$ each, and $T_{\text{opt}}$ for every iteration.
+A clear drawback of the IHS method is that for every iteration one needs to solve
+a quadratic program in $d$ parameters so in the worst case costs $T_{\text{opt}}
+= O(d^3)$ per iteration update.
+As such, we need to understand how prohibitive this scaling is, and if so,
+where exactly the IHS model is favourable compared to the exact method.
+This behaviour is explored in Figure \ref{fig: lasso-synthetic} where each
+sub-figure is the same experiment but with different $n$.
+The experimental setup is to fix an $n \in \{ 50000, 100000, 200000, 400000 \}$
+and then generate a dataset under the gaussian design with unit variance and
+various $d$ from $10$ to roughly $300$.
+Sketch sizes of $m = 2d$ were used throughout.
+The density of the data was fixed at $\rho = 0.05$, the number of iterations was
+fixed exactly at $\lceil \log_{10}(n) \rceil$ and the experiments were repeated 5 times (the
+means have been plotted).
+The combined time of sketch time and solve times have been plotted and
+as expected, in each of the subfigures, there is a point beyond which the IHS
+is slower than the exact method; shown by the dashed lines, this is due to the
+cubic scaling of the quadratic programming rather than the sketching time which
+increases only mildly as $d$ is increased.
