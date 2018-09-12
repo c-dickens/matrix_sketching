@@ -30,7 +30,7 @@ def main():
         sparse_flag = False # a check to say if sparse data is found.
         # Defaults to False unles the sparse matrix can be read in.
 
-        if data  is "kdd":
+        if data is "kdd":
             print("Ignoring this one.")
             continue
 

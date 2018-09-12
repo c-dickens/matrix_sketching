@@ -67,8 +67,9 @@ Two competing methods of approximation through matrix sketching are the
     (x - x^t) \|^2 - \langle A^T (y - Ax^t), x - x^t \rangle
   \end{equation}
   The benefit of this approach is that rather than computing $\|Ax\|_2^2$ one
-  instead computes $\| SAx \|_2^2$ which is sufficiently-well concentrated to enjoy
-  convergence to the optimal solution through the iterative scheme.
+  instead computes $\| SAx \|_2^2$ which is sufficiently-well concentrated to
+  around its mean that the iterative scheme enjoys
+  convergence to the optimal solution of the regression problem.
   This is a huge computational saving when $SA$ has $m$ rows (which can be bounded
   independently of $n$) rather than the $n$ of $A$ to compute the quadratic form.
 
@@ -179,7 +180,7 @@ other sketching methods on various synthetic and real datasets:
 importantly the required projection dimension behaves better than suggested by
 the theory.
 Then we show that, in line with the theory, CountSketch is practically a much
-faster summary method as it can be computed while `streaming` the dataset.
+faster summary method as it can be computed while `streaming' the dataset.
 We then give a series of experiments comparing the types of sketches within the
 IHS approach and show that for this class of problems the CountSketch is a good
 choice of random projection.
@@ -192,3 +193,23 @@ Our work is timely as much of the current research on randomized sketching
  algorithms
 has focused on the theory and there is still a gap between theoretical and
 practical understanding which we aim to narrow.
+
+We organise the paper as follows:
+\begin{itemize}
+  \item Section \ref{sec: preliminaries} introduce the necessary theory, background,
+  and comparison of the various sketching models and methods under consideration.
+
+  \item Section \ref{sec: countsketch-properties} outlines the theory for
+  understanding why the countsketch can be used within the iterative sketching
+  model.
+  All proofs in this section are deferred to Appendix \ref{sec: countsketch-proofs}.
+
+  \item  Section \ref{sec: subspace-embedding-results} provides experiments
+  which compare the various sketching methods in terms of how good an embedding
+  is returned and the associated computational cost.
+  
+  \item Sections \ref{sec: countsketch-ihs}, \ref{sec: ihs-lasso} compare the
+  use of CountSketch
+  within the iterative sketching model, comparing performance to the previously
+  used sketches as well as the popular Python machine learning library Sklearn.
+\end{itemize}

@@ -15,7 +15,7 @@ param_grid = {
 
 subspace_embedding_exp_setup = {
     'random_state' : 400,
-    'num trials'   : 5,
+    'num trials'   : 10,
     'aspect ratio range' : np.linspace(0.1,0.5, 5),
     'rows'               : [2**11]
 }

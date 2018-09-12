@@ -15,28 +15,20 @@ from lib import countsketch, srht, gaussian, classical_sketch
 from lib import ClassicalSketch
 from lib import iterative_hessian_sketch as ihs
 from synthetic_data_functions import unconstrained_regession_data
+from experiment_parameter_grid import param_grid, sketch_names, sketch_functions
+from matplotlib_config import update_rcParams
 import matplotlib.pyplot as plt
+from my_plot_styles import plotting_params
 
 random_seed = 400
 np.random.seed(random_seed)
-sketch_names = ["Exact", "CountSketch", "SRHT","Gaussian", "Classical"]
+#sketch_names = ["Exact", "CountSketch", "SRHT","Gaussian", "Classical"]
+sketch_names.append("Exact")
+sketch_names.append("Classical")
 ihs_sketch_names = ["CountSketch", "SRHT", "Gaussian"]
-sketch_functions = {"CountSketch": countsketch.CountSketch,
-                    "SRHT" : srht.SRHT,
-                    "Gaussian" : gaussian.GaussianSketch,
-                    "Classical" : classical_sketch.ClassicalSketch}
-repeats = 10
-plotting_params = {"CountSketch" : {"colour" : "b",
-                                    "marker" : "o" },
-                   "SRHT" : {"colour" : "k",
-                             "marker" : "s"},
-                   "Gaussian" : {"colour" : "r",
-                                 "marker" : "v"},
-                   "Classical" : {"colour" : "m",
-                                  "marker" : "*"},
-                    "Exact" : {"colour" : "mediumspringgreen",
-                               "marker" : "^"}
-                                  }
+
+sketch_functions["Classical"] = classical_sketch.ClassicalSketch
+repeats = param_grid['num trials']
 
 
 def mean_square_error(x1, x2):
@@ -136,7 +128,7 @@ def experiment_mse_vs_row_dim():
     ax1.legend()
     plt.tight_layout()
     fig.savefig("figures/verify_ihs_error_num_rows.pdf", bbox_inches="tight")
-    plt.show()
+    #plt.show()
 
 def experiment_error_vs_iteration():
     n = 6000
@@ -219,7 +211,7 @@ def experiment_error_vs_iteration():
     fig.savefig("figures/verify_ihs_error_to_truth.pdf", bbox_inches="tight")
     ax.set_title("Log Error to Truth")
 
-    plt.show()
+    #plt.show()
 
 def experiment_error_vs_dimensionality():
     dimension = [2**i for i in range(4,9)]
@@ -287,13 +279,13 @@ def experiment_error_vs_dimensionality():
     ax.set_xticklabels(dimension)
     #ax.legend()
     fig.savefig("figures/verify_ihs_error_dimension.pdf", bbox_inches="tight")
-    plt.show()
+    #plt.show()
 
 
 def main():
-    experiment_mse_vs_row_dim()
-    #experiment_error_vs_iteration()
-    #experiment_error_vs_dimensionality()
+    # experiment_mse_vs_row_dim()
+    # experiment_error_vs_iteration()
+    experiment_error_vs_dimensionality()
 
 if __name__ == "__main__":
     main()
