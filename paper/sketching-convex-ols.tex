@@ -152,12 +152,24 @@ Our code is made available at
 
 \begin{tabular}{|c|c|c|c|c|c|c|}
   \hline
-Dataset                   & Dimensionality       &   Aspect ratio $\frac{d}{n}$ & Density $\nnz{A}/nd$ &  Coherence Ratio & Rank & Source \\
+Dataset                   & Dimensionality  $(n,d)$      &   Aspect ratio $d/n$ & Density $\nnz{A}/nd$ &  Coherence Ratio & Rank & Source \\
 \hline
 YearPredictionsMSD       & $(515345,91)$         &   $1.7 \times 10^{-4} $      & 1.0                  &  2608.7                 &  91   &  \cite{Dua:2017}             \\
 US Census                & $(5048299, 12)$         & $2.4 \times 10^{-6}$       &
 0.5                 &    65.7           &  12 &  \cite{census2000}\\
 California Housing       & $(20000, 17)$         &   $8.5 \times 10^{-4} $      &  0.76                 & 4261.4                 & 17    &   \cite{geron2017hands}      \\
+
+
+  Slice                   & $(53500, 387)$         &   $7 \times 10^{-3} $      &  0.36                 &                          910                 & 387    &   \cite{Dua:2017}       \\
+
+
+Susy            & $(4999999, 19)$         &   $4 \times 10^{-6} $      &  0.96                 & 1791.0                & 19    &   \cite{Dua:2017}       \\
+
+Landmark        & $(71952, 2703)$         &   $4 \times 10^{-2} $      &  0.005                 & 41.8                & 2703    &   \cite{davis2011university}      \\
+
+Complex       & $(7350, 881)$         &   $1.2 \times 10^{-1} $      &  0.006                 & 1.07                & 881    &   \cite{davis2011university}      \\
+
+
 Rail2586                 & $(923269, 2586)$      &   $2.7 \times 10^{-3} $      &  0.003                &  Timeout                & 2586    &   \cite{davis2011university} \\
 % US Census                & $(5000000,10)$                 &            &            &           &          &      &         &            & \\
 \hline
@@ -168,6 +180,7 @@ Coherence Ratio is the ratio of the largest and smallest leverage scores which
 gives a measure of how uniformly distributed the leverage scores are.}
 \label{table: data-facts}
 \end{table}
+
 
 
 

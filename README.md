@@ -67,8 +67,7 @@ Run the download script to get all datasets.
 - `YearPredictionMSD` - taken from UCI ML repo.  Download and usage from
 `get_data.py` and shell script in data repo.
 - `Susy`
-- `KDDCup` -- nb. this is saved as object array, need to do again and save
-with `dtype=np.float`.
+- `wxa` taken from the `libsvm` repo.  Need to be downloaded in the `get_data` directory by running `curl -O _url_`.  From here it is enough to run the `download_data.py` script and then ready to go.
 - `rail2586` - Taken from Florida Sparse Matrix Repo.  Download MATLAB file and
 save `X = (Problem.A)'  `.
 - `census.mat`  downloaded from `https://github.com/chocjy/randomized-quantile-regression-solvers/blob/master/matlab/data/census_data.mat`

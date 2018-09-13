@@ -10,8 +10,10 @@ lib/fastwht/
 tests/timings.ipynb
 
 # Ignore figures directory
-figures
-figures/*.py # except plotting scripts
+!figures/
+figures/*
+!figures/*.py # except plotting scripts
+
 
 # ignore paper/ except the following
 !/paper
@@ -19,7 +21,7 @@ paper/*
 !paper/sketching-convex-ols.tex
 !paper/introduction.tex
 !paper/count-sketch-properties.tex
-
+!paper/*.tex
 
 # NB want to include the following in sandbox
 lib/sandbox/*  # ignore everything in sandbox except...

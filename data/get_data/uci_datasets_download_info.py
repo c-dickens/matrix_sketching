@@ -11,6 +11,54 @@ all_datasets = {
                   'target_col' : 0,
                   'matlab' : False
                  },
+       "w1a" : {
+                   "url" : 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#w1a',
+                   "outputFileName" : '../w1a',
+                   'target_col' : 'libsvm',
+                   'matlab' : False
+                  },
+       "w2a" : {
+                   "url" : 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#w2a',
+                   "outputFileName" : '../w2a',
+                   'target_col' : 'libsvm',
+                   'matlab' : False
+                  },
+       "w3a" : {
+                   "url" : 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#w3a',
+                   "outputFileName" : '../w3a',
+                   'target_col' : 'libsvm',
+                   'matlab' : False
+                  },
+       "w4a" : {
+                   "url" : 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#w4a',
+                   "outputFileName" : '../w4a',
+                   'target_col' : 'libsvm',
+                   'matlab' : False
+                  },
+       "w5a" : {
+                   "url" : 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#w5a',
+                   "outputFileName" : '../w5a',
+                   'target_col' : 'libsvm',
+                   'matlab' : False
+                  },
+        "w6a" : {
+                    "url" : 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#w6a',
+                    "outputFileName" : '../w6a',
+                    'target_col' : 'libsvm',
+                    'matlab' : False
+                   },
+        "w7a" : {
+                    "url" : 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#w7a',
+                    "outputFileName" : '../w7a',
+                    'target_col' : 'libsvm',
+                    'matlab' : False
+                   },
+        "w8a" : {
+                    "url" : 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#w8a',
+                    "outputFileName" : '../w8a',
+                    'target_col' : 'libsvm',
+                    'matlab' : False
+                   },
        "slice" : {
                     'url' : 'https://archive.ics.uci.edu/ml/machine-learning-databases/00206/slice_localization_data.zip',
                     'outputFileName' : '../Slice',
@@ -25,26 +73,24 @@ all_datasets = {
                 'target_col' : 0,
                 'matlab' : False
        },
-       "kdd"    :{
-                'url' : 'https://www.openml.org/data/get_csv/53996/KDDCup99.arff',
-                'outputFileName' : '../KDD',
-                'target_col' : -1,
-                'categorical columns' : [1,2,3, -1],
-                'matlab' : False
+
+
+       "landmark" : {
+                  'url'   : 'https://sparse.tamu.edu/Pereyra/landmark',
+                  'outputFileName' : '../Landmark',
+                  'target_col' : -1,
+                  'matlab'  : True,
+                  'inputFileName' : 'landmark_data.mat'
        },
-       # 'boston'     :{
-       #          'url' : 'https://www.openml.org/data/download/52643/boston.arff',
-       #          'outputFileName' : '../Boston',
-       #          'target_col' : -1,
-       #          'matlab' : False
-       # },
-       # 'mnist'      :{
-       #          'url' : 'https://www.openml.org/data/download/18689782/mnist.arff',
-       #          'outputFileName' : '../MNIST',
-       #          'target_col' : -1,
-       #          'matlab' : False
-       #
-       # },
+
+       "complex" : {
+                  'url'   : 'https://sparse.tamu.edu/JGD_Homology/ch7-7-b2',
+                  'outputFileName' : '../Complex',
+                  'target_col' : -1,
+                  'matlab'  : True,
+                  'inputFileName' : 'complex_data.mat'
+       },
+
        "census" : {
                   'url'   : 'https://github.com/chocjy/randomized-quantile-regression-solvers/blob/master/matlab/data/census_data.mat',
                   'outputFileName' : '../Census',
@@ -52,18 +98,11 @@ all_datasets = {
                   'matlab'  : True,
                   'inputFileName' : 'census_data.mat'
        },
-       "rucci" : {
-                'url' : 'https://sparse.tamu.edu/Rucci/Rucci1',
-                'outputFileName' : '../Rucci',
-                'target_col'     : -1,
-                'matlab'         : True,
-                'inputFileName'  : 'Rucci1.mat'
-       },
        "rail2586" : {
                   'url'   : 'https://sparse.tamu.edu/Mittelmann/rail2586',
                   'outputFileName' : '../rail2586',
                   'target_col' : -1,
                   'matlab'  : True,
                   'inputFileName' : 'rail2586.mat'
-}
+        }
 }
