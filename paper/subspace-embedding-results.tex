@@ -8,50 +8,71 @@ dimension be in order to obtain small error (3) the CountSketch
 theoretically requires a larger projection to obtain the subspace embedding
 property, is this reflected in practise?
 
-\noindent\textbf{Time Complexity compared to sparsity.} The CountSketch takes
+\noindent\textbf{Time Complexity compared to sparsity.}
+Only the CountSketch and SRHT are tested because the explicit matrix
+multiplication for the Gaussian sketch is exceedingly high which even
+for moderately sized inputs will be prohibitive compared to the other two methods.
+The CountSketch takes
 $O(\nnz{A})$ time to construct a subspace embedding
 whereas the SRHT requires $O(nd \log n)$.
 Although the SRHT does not scale with the sparsity of the data, for the
 practitioner it
 will be of interest to know where, if any, there is a threshold at which one of
 the transforms is preferable from the perspective of time cost.
-To test this claim we generated random matrices of size $n$ varying from
-$10000, 25000, 50000, 100000$ and $d$ ranging from $10,50,100,500,1000$
-with a \textit{density} parameter $\rho$ which was varied from 0 to 1.
-A projection dimension of $5d$ was chosen for the summarisation as this offered
-a good tradeoff between compute time and accuracy which will be discussed in the
-succeeding section.
-The density is the fraction of nonzeros entries in the matrix out of a possible
-$nd$.
-Only the CountSketch and SRHT are tested because the explicit matrix
-multiplication for the Gaussian sketch is exceedingly high which even
-for moderately sized inputs will be prohibitive compared to the other two methods.
-As seen in Figure \ref{fig: summary-time-100000}, both transforms scale
+To test this claim we generated random matrices of size $n=50000$ with varying $d$
+in $\{ 10, 100, 1000,5000 \}$.
+This captures the range of aspect ratios seen in the real datasets that we will
+test on as described in Table \ref{table: data-facts}.
+The \textit{density} parameter $\rho$ (varied from 0 to 1) denotes the
+fraction of nonzeros in the test matrix $A$ which was generated using the
+\texttt{scipy.sparse.random(n,d,density=$\rho$)} routine which returns a
+matrix of $nd\rho$ nonzero entries chosen independently from a standard normal
+distribution.
+Both sketching methods are agnostic to the distribution of choice so from a
+speed perspective this makes no difference.
+A projection dimension of $5d$ was chosen for the summarisation but sufficient
+sketching dimensions will be discussed in the succeeding section; for now one can
+assume that $m=5d$ returns a subspace embedding under this experimental setup.
+As seen in Figure \ref{fig: summary-time-50000}, both transforms scale
 consistently with the theory: the CountSketch has increased time to compute the
-summary as the density of the data increases and the SRHT is generally stable as
-the density varies.
-The key point to take away is that the CountSketch is generally \textit{an order
-of magnitude faster} to compute the embedding demonstrating that as $n$ grows
-to be significantly larger than $d$, this saving could be vast.
+summary as the density of the data increases and the time taken to compute the
+SRHT embedding is generally stable as the density varies.
+One key point to take away is that the CountSketch is \textit{an order
+of magnitude faster} to compute the embedding compared to the SRHT even as the
+density increases;
+as $n$ grows to be significantly larger than $d$, this saving could be vast.
 Interestingly, our implementations do not show a cross over point for corresponding
 settings of the parameters i.e for a fixed $(n,d,m)$ triple the time to compute the
 CountSketch summary is always significantly less than that for
 the SRHT summary.
 This behaviour is consistent across each of the setup values so only those for
-the setting $(n,d) = (10000, \cdot)$ are given here.
-In addition, the time benefit of using the CountSketch over the SRHT is reflected
-on the real datasets as well with the results given in Table
-\ref{table: real-data-subspace-embedding}
-where roughly equal distortions are found at a fraction of the time cost.
-For the `tall-skinny' matrices the CountSketch is found again with at least a
-factor of 10 less time but for the wider matrices the SRHT times out in our
-implementation.
+the $n = 50000$ are given here.
+
+In addition, the time saving of using the CountSketch over the SRHT is reflected
+on the real datasets with the results given in Table
+\ref{table: real-data-subspace-embedding}.
+CountSketch embeddings are found at a fraction of the time for the SRHT which
+allows us to sketch the data in less than 1 second on all but two of the
+experimental setups.
+Moreover, the (at least factor 10) speedup is in general observed on each of the
+real datasets which is consistent with the synthetic data.
+For the `tall-skinny' matrices the CountSketch again found to be at least a
+factor of 10 faster.
+For the wider matrices ($d>1000$) the SRHT times out in our
+implementation so we report no results.
+Although the embedding time difference is quite severe in some cases, we note
+that the time complexity of our SRHT implementation is comparable to the test
+cases of the Hadamard transform that we use given in its repository.
+
 
 \begin{figure}
   \centering
-\includegraphics[scale=0.75,keepaspectratio]{summary_time_density_10000}
-        \caption{$n=100000$}
-        \label{fig: summary-time-100000}
+\includegraphics[scale=0.75,keepaspectratio]{summary_time_density_50000}
+        \caption{$n=50000$ and $d$ from $10,100,1000,5000$.  The legend
+        describes the sketch used and the number appended is the value of $d$
+        chosen for that particular experiment.
+        A projection dimension of $m=5d$ was used.}
+        \label{fig: summary-time-50000}
 \end{figure}
 
 
@@ -86,6 +107,7 @@ implementation.
 % Please add the following required packages to your document preamble:
 %
 
+
 \begin{table}[ht]
 \centering
 \begin{adjustbox}{width=1\textwidth}
@@ -94,18 +116,51 @@ implementation.
 \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|}
   \hline
 \multirow{2}{*}{Dataset} & \multicolumn{3}{c|}{CountSketch (time)} & \multicolumn{3}{c}{SRHT (time)} & \multicolumn{3}{c|}{CountSketch (error)} & \multicolumn{3}{c|}{SRHT (error)} \\
-                        &     $2d$       &  $5d$            & $10d$          & $2d$          & $5d$        & $10d$         &     $2d$       &  $5d$          &   $10d$         &  $2d$          & $5d$         & $10d$  \\
+                        &     $1d$       &  $2d$            & $5d$          & $1d$          & $2d$        & $5d$         &     $1d$       &  $2d$          &   $5d$         &  $1d$          & $2d$         & $5d$  \\
 \hline
-YearPredictionsMSD                         &    0.116         &   0.110          &  0.112          &  2.56         &  2.51        &   2.51        &  0.012           &   0.005          &    0.003           &   0.019        &   0.005        &  0.002         \\
-Rail2586            &  0.222           &  0.365           &  0.758             &  -         & -         & -           & 0.043             &  0.017             &  0.009            & -          & -           & -           \\
-California Housing     &   0.005          &  0.002           &   0.002          &  0.015         &  0.014        & 0.015          &   0.024          &  0.007           & 0.017       & 0.084          & 0.043         & 0.018 \\
-US Census    &            &           &          &      &         &            &            &              &         &          &  &        \\
+YearPredictionsMSD      &    \textbf{0.143}         &   0.143          &  0.144          &  \textbf{3.06}         &  3.02        &   2.99        &  0.031           &   0.049          &    0.007           &   0.033        &   0.027        &  0.003         \\
+
+
+California Housing     &   \textbf{0.001}          &  0.001           &   0.002          & \text{0.018}         &  0.022        & 0.017          &   0.135          &  0.024           & 0.008       & 0.242          & 0.172         & 0.049 \\
+
+Slice &  0.067  &  0.073  &  0.117 &   1.34   & 1.29 & 1.27 &  0.004  &  0.003 &  0.0006 &  0.004 & 0.005  &  0.0005  \\
+
+Susy  & \textbf{0.444} & 0.440 & 0.423 & \textbf{10.7} & 10.9 & 10.9 & 0.200 & 0.103 & 0.028 & 0.196 & 0.056 & 0.041 \\
+
+Landmark & 0.522 & 1.22 & 3.68 & - & - & - & 0.382 & 0.190 & 0.076 & - & - & - \\
+
+Complex & 0.028 & 0.046 & 0.111 & 0.264 & 0.235 & 0.309 & 0.924 & 0.464 & 0.186 & 0.829 & 0.367 & 0.0877 \\
+
+US Census   & \textbf{0.261} & 0.257 & 0.240 & \textbf{7.08} & 7.23 & 6.62 & 0.0320 &  0.152 & 0.037 & 0.063 & 0.081 & 0.041 \\
+
+Rail2586  & \textbf{0.897} & 1.31 & 3.15 & - & - & - & 0.085 & 0.043 & 0.017 & - & - & - \\
+
+wx1 & & & & & & & & & & & & \\
+
+wx2 & & & & & & & & & & & & \\
+
+wx3 & & & & & & & & & & & & \\
+
+wx4 & & & & & & & & & & & & \\
+
+wx5 & & & & & & & & & & & & \\
+
+wx6 & & & & & & & & & & & & \\
+
+wx7 & & & & & & & & & & & & \\
+
+wx8 & & & & & & & & & & & & \\  
 \hline
 \end{tabular}
 \end{adjustbox}
-\caption{Comparison of CountSketch and SRHT on real datasets}
+\caption{Comparison of CountSketch and SRHT on real datasets. Bold text indicates
+the fastest embedding which preserves rank.
+Observe that the three fail cases are the datasets  with the largest three
+aspect ratios.}
 \label{table: real-data-subspace-embedding}
 \end{table}
+
+% -----------------------------------------------------------------------------
 
 
 \noindent\textbf{Sufficient Sketching Dimension}
@@ -120,12 +175,12 @@ For this set of experiments we fix $n$ and then generate a selection of matrices
 which range from `tall-and-skinny' to `fat' matrices by choosing $d$ to range
 from roughly $0.05n$ to $0.5n$ over a variety of distributions.
 The results from choosing matrices whose entries are standard normal are given
-in Figure ...
+in Figure \ref{fig: distortion-sampling-factor}.
 The value of $\eps$ was then measured: this is referred to as the \textit{
 distortion} and is the error induced by the approximate matrix product
 computation $\|A^T A - A^T S^T S A \|_F/\|A^TA\|_F$.
 In addition, we also measure the rank of the returned matrix $SA$ as it must
-be preserved for a subspace embedding.
+be preserved for a true subspace embedding.
 The plots indicate that in general, the distortion induced by the CountSketch is
 comparable with at least one of the Gaussian or SRHT sketches.
 There are regimes in which, purely from a distortion perspective, one of the
@@ -153,39 +208,42 @@ fact not problematic: on all the test instance which fall into the tall-and-
 skinny setup, CountSketch retains rank with comparable distortion.
 
 \begin{figure}
-    \centering
-    \begin{subfigure}[b]{0.22\textwidth}
-        \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_gaussian_2048_256.pdf}
-        \caption{$d=256$}
-        \label{fig: subspace-125e3-aspectratio}
-    \end{subfigure}
-    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc.
-      %(or a blank line to force the subfigure onto a new line)
-    \begin{subfigure}[b]{0.22\textwidth}
-        \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_gaussian_2048_768.pdf}
-        \caption{$d=375$}
-        \label{fig: subspace-375e1-aspectratio}
-    \end{subfigure}
-    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc.
-    %(or a blank line to force the subfigure onto a new line)
-    \begin{subfigure}[b]{0.22\textwidth}
-        \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_gaussian_2048_512.pdf}
-        \caption{$d=512$}
-        \label{fig: subspace-25e1-aspectratio}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.22\textwidth}
-        \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_gaussian_2048_1024.pdf}
-        \caption{$d=1024$}
-        \label{fig: subspace-5e1-aspectratio}
-    \end{subfigure}
-    \caption{Distortion compared to sampling factor for various aspect ratios.
-    Plotted are the mean results over 10 trials and a cross denotes when at least
-    one trial has failed.
-    The larger crosses indicate a higher number of failures with the largest
-    crosses in Figure \ref{fig: subspace-5e1-aspectratio} for which CountSketch
-    \textit{never} returned a full rank subspace embedding.}
-    \label{fig: distortion-sampling-factor}
-\end{figure}
+        \centering
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_gaussian_2048_256.pdf}
+            \caption{$d=256$}
+            \label{fig: subspace-125e3-aspectratio}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_gaussian_2048_512.pdf}
+            \caption{$d=512$}
+            \label{fig: subspace-375e1-aspectratio}
+        \end{subfigure}
+        \vskip\baselineskip
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_gaussian_2048_768.pdf}
+            \caption{$d=768$}
+            \label{fig: subspace-25e1-aspectratio}
+        \end{subfigure}
+        \quad
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_gaussian_2048_1024.pdf}
+            \caption{$d=1024$}
+            \label{fig: subspace-5e1-aspectratio}
+        \end{subfigure}
+        \caption{Distortion compared to sampling factor for various aspect ratios.
+        Plotted are the mean results over 10 trials and a cross denotes when at least
+        one trial has failed.
+        The larger crosses indicate a higher number of failures with the largest
+        crosses in Figure \ref{fig: subspace-5e1-aspectratio} for which CountSketch
+        \textit{never} returned a full rank subspace embedding.}
+        \label{fig: distortion-sampling-factor}
+    \end{figure}
 
 
 
