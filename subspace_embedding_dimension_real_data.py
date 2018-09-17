@@ -3,6 +3,7 @@ Real dataset subspace embedding experiments
 '''
 import json
 import itertools
+from pprint import PrettyPrinter
 import numpy as np
 import scipy as sp
 from scipy import sparse
@@ -32,12 +33,14 @@ np.random.seed(random_seed)
 #                     "SRHT" : srht.SRHT,
 #                     "Gaussian" : gaussian.GaussianSketch}
 
-def subspace_embedding_check():
+def subspace_embedding_check(test_data):
     '''Experiment to check at what point a subspace embedding is obtained
     on real datasets.'''
-    datasets = datasets_config.datasets
+    all_datasets = datasets_config.datasets
+    datasets = test_data
     results = {}
     n_trials = subspace_embedding_exp_setup['num trials']
+    #
 
     for data in datasets:
         results[data] = {}
@@ -49,7 +52,8 @@ def subspace_embedding_check():
     for data in datasets:
         print("-"*80)
         print("Testing dataset: {}".format(data))
-        input_file = datasets[data]["filepath"]
+        # input_file = datasets[data]["filepath"]
+        input_file = all_datasets[data]['filepath']
         sparse_flag = False # a check to say if sparse data is found.
         # Defaults to False unles the sparse matrix can be read in.
 
@@ -77,7 +81,7 @@ def subspace_embedding_check():
         true_norm = np.linalg.norm(true_covariance,ord='fro')
         true_rank = np.linalg.matrix_rank(A)
         print("Rank of test matrix: {}".format(true_rank))
-        sampling_factors = 1 + np.linspace(0,5.0,6)
+        sampling_factors = [1, 2, 5]
         print(sampling_factors)
         sketch_dims = [np.int(sampling_factors[i]*d) for i in range(len(sampling_factors))]
         print(sketch_dims)
@@ -109,12 +113,34 @@ def subspace_embedding_check():
     return results
 
 def main():
-        exp_results = subspace_embedding_check()
-        file_name = 'subspace_embedding_dimension_real_data'
-        np.save('figures/' + file_name + '.npy', exp_results)
-        with open('figures/' + file_name + '.json', 'w') as outfile:
-            json.dump(exp_results, outfile)
-        print(exp_results)
+        with open('figures/real_data_summary_time.json') as f:
+            already_seen_data = json.load(f)
+        print(already_seen_data.keys())
+        saved_datasets = datasets_config.datasets.keys()
+        print(saved_datasets)
+        new_data_2_sketch= {}
+        for dataset in saved_datasets:
+            if dataset not in already_seen_data.keys():
+                # i.e we have added a new datasets to test
+                print(dataset)
+                new_data_2_sketch[dataset] = {}
+
+        print(new_data_2_sketch)
+        new_exp_results = subspace_embedding_check(new_data_2_sketch)
+
+        pretty = PrettyPrinter(indent=4)
+        already_seen_data.update(new_exp_results)
+        pretty.pprint(already_seen_data)
+        with open('figures/real_data_summary_time.json', 'w') as outfile:
+           json.dump(already_seen_data, outfile)
+
+
+        # exp_results = subspace_embedding_check()
+        # file_name = 'subspace_embedding_dimension_real_data'
+        # np.save('figures/' + file_name + '.npy', exp_results)
+        # with open('figures/' + file_name + '.json', 'w') as outfile:
+        #     json.dump(exp_results, outfile)
+        # print(exp_results)
 
 if __name__ == "__main__":
     main()

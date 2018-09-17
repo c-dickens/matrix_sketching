@@ -104,7 +104,6 @@ THE IHS SKETCHING MODEL.
 PROVIDE THE SKETCH AND SOLVE MODEL FOR
 COMPARISON.
 
-Testing from Atom second time.
 
 \section{Introduction} \label{sec: intro}
 \input{introduction}
@@ -154,45 +153,63 @@ Our code is made available at
   \hline
 Dataset                   & Dimensionality  $(n,d)$      &   Aspect ratio $d/n$ & Density $\nnz{A}/nd$ &  Coherence Ratio & Rank & Source \\
 \hline
-YearPredictionsMSD       & $(515345,91)$         &   $1.7 \times 10^{-4} $      & 1.0                  &  2608.7                 &  91   &  \cite{Dua:2017}             \\
-US Census                & $(5048299, 12)$         & $2.4 \times 10^{-6}$       &
-0.5                 &    65.7           &  12 &  \cite{census2000}\\
+
+Complex       & $(7350, 881)$         &   $1.2 \times 10^{-1} $      &  0.006                 & 1.07                & 881    &   \cite{davis2011university}      \\
+
+Landmark        & $(71952, 2703)$         &   $4 \times 10^{-2} $      &  0.005                 & 41.8                & 2703    &   \cite{davis2011university}      \\
+
+  Slice                   & $(53500, 387)$         &   $7 \times 10^{-3} $      &  0.36                 &                          910                 & 387    &   \cite{Dua:2017}       \\
+
+Rail2586                 & $(923269, 2586)$      &   $2.7 \times 10^{-3} $      &  0.003                &  14840                & 2586    &   \cite{davis2011university} \\
+
 California Housing       & $(20000, 17)$         &   $8.5 \times 10^{-4} $      &  0.76                 & 4261.4                 & 17    &   \cite{geron2017hands}      \\
 
 
-  Slice                   & $(53500, 387)$         &   $7 \times 10^{-3} $      &  0.36                 &                          910                 & 387    &   \cite{Dua:2017}       \\
+YearPredictionsMSD       & $(515345,91)$         &   $1.7 \times 10^{-4} $      & 1.0                  &  2608.7                 &  91   &  \cite{Dua:2017}             \\
+
+US Census                & $(5048299, 12)$         & $2.4 \times 10^{-6}$       &
+0.5                 &    65.7           &  12 &  \cite{census2000}\\
+
 
 
 Susy            & $(4999999, 19)$         &   $4 \times 10^{-6} $      &  0.96                 & 1791.0                & 19    &   \cite{Dua:2017}       \\
 
-Landmark        & $(71952, 2703)$         &   $4 \times 10^{-2} $      &  0.005                 & 41.8                & 2703    &   \cite{davis2011university}      \\
-
-Complex       & $(7350, 881)$         &   $1.2 \times 10^{-1} $      &  0.006                 & 1.07                & 881    &   \cite{davis2011university}      \\
 
 
-Rail2586                 & $(923269, 2586)$      &   $2.7 \times 10^{-3} $      &  0.003                &  14840                & 2586    &   \cite{davis2011university} \\
 
-wx1 & $(2477, 301)$    & $1.2 \times 10^{-3}$ & 0.041 & 779 & 301 & \cite{platt199912} \\
 
-wx2 & $(3470, 301)$    & $8.6 \times 10^{-2}$ & 0.042 & 1108 & 301 & \cite{platt199912} \\
 
-wx3 & $(4912, 301)$    & $6.1 \times 10^{-2}$ & 0.042 & 1626 & 301 & \cite{platt199912} \\
 
-wx4 & $(7366, 301)$    & $4.1 \times 10^{-2}$ & 0.042 & 2488 & 301 & \cite{platt199912} \\
 
-wx5 & $(9888, 301)$    & $3.0 \times 10^{-2}$ & 0.042 & 3418 & 301 & \cite{platt199912} \\
+\hline
 
-wx6 & $((17188, 301))$ & $1.7 \times 10^{-2}$ & 0.042 & 6035 & 301 & \cite{platt199912} \\
+w1a & $(2477, 301)$    & $1.2 \times 10^{-1}$ & 0.041 & 779 & 301 & \cite{platt199912} \\
 
-wx7 & $(24692, 301)$   & $1.2 \times 10^{-2}$ & 0.042 & 8684 & 301 & \cite{platt199912} \\
+w2a & $(3470, 301)$    & $8.6 \times 10^{-2}$ & 0.042 & 1108 & 301 & \cite{platt199912} \\
 
-wx8 & $49749, 301)$    & $6 \times 10^{-3}$   & 0.042 & 17640 & 301 & \cite{platt199912} \\ 
+w3a & $(4912, 301)$    & $6.1 \times 10^{-2}$ & 0.042 & 1626 & 301 & \cite{platt199912} \\
+
+w4a & $(7366, 301)$    & $4.1 \times 10^{-2}$ & 0.042 & 2488 & 301 & \cite{platt199912} \\
+
+w5a & $(9888, 301)$    & $3.0 \times 10^{-2}$ & 0.042 & 3418 & 301 & \cite{platt199912} \\
+
+w6a & $(17188, 301)$ & $1.7 \times 10^{-2}$ & 0.042 & 6035 & 301 & \cite{platt199912} \\
+
+w7a & $(24692, 301)$   & $1.2 \times 10^{-2}$ & 0.042 & 8684 & 301 & \cite{platt199912} \\
+
+w8a & $(49749, 301)$    & $6 \times 10^{-3}$   & 0.042 & 17640 & 301 & \cite{platt199912} \\
 \hline
 \end{tabular}
 \end{adjustbox}
-\caption{Comparison of CountSketch and SRHT on real datasets.
+\caption{Summary of real datasets used throughout (sorted by aspect ratio).
 Coherence Ratio is the ratio of the largest and smallest leverage scores which
-gives a measure of how uniformly distributed the leverage scores are.}
+gives a measure of how uniformly distributed the leverage scores are.
+Each of the w$n$a datasets is included as the number of columns remains constant
+while the number of rows increases, while also retaining fairly consistent
+data density.
+As a result the aspect ratio decreases as the dataset is increased but the
+coherence ratio increases: this is to be expected as many more rows are being
+added without changing the rank so there must be rows with low leverage score.}
 \label{table: data-facts}
 \end{table}
 
