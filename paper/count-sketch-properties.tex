@@ -1,39 +1,53 @@
-\begin{Lemma} \label{lem: zero-mean}
-  Entries of $S$ are zero-mean random variables.
-\end{Lemma}
+In this section, we show that the CountSketch fulfils the necessary
+properties to instantiate the Hessian sketch framework.
 
-\begin{proof}
-  For a fixed column $j$, the Count Sketch construction gives:
+\subsection{Subgaussianity of CountSketch}
 
-  \begin{equation}
-    S_{ij}=
-    \begin{cases}
-      1, & \text{with probability}\ \frac{1}{2m} \\
-      -1, & \text{with probability}\ \frac{1}{2m} \\
-      0, & \text{with probability}\ \frac{m-1}{m} \\
-    \end{cases}
-  \end{equation}
-  Then $\E S_{ij} = \frac{1}{2m}(1) + \frac{1}{2m}(-1) + \frac{m-1}{m}(0) = 0$.
-\end{proof}
 
-\begin{Lemma} \label{lem: orthogonal_rows}
+%\begin{Lemma} \label{lem: zero-mean}
+%  Entries of $S$ are zero-mean random variables.
+%\end{Lemma}
+
+%\begin{proof}
+%  For a fixed column $j$, the Count Sketch construction gives:
+%
+%  \begin{equation}
+%    S_{ij}=
+%    \begin{cases}
+%      1, & \text{with probability}\ \frac{1}{2m} \\
+%      -1, & \text{with probability}\ \frac{1}{2m} \\
+%      0, & \text{with probability}\ \frac{m-1}{m} \\
+%    \end{cases}
+%  \end{equation}
+%  Then $\E S_{ij} = \frac{1}{2m}(1) + \frac{1}{2m}(-1) + \frac{m-1}{m}(0) = 0$.
+%\end{proof}
+
+\begin{Lemma} \label{lem:orthogonal_rows}
   Let $S$ be a CountSketch matrix.
   Let $N_i$ denote the number of nonzeros in row $S_i$.
-  Then $SS^T$ is a diagonal matrix with $(SS^T)_{ii} = N_i$ and in particular,
+  Then $SS^T$ is a diagonal matrix with $(SS^T)_{ii} = N_i$ and hence
   distinct rows of $S$ are orthogonal.
 \end{Lemma}
 
 \begin{proof}
-  The matrix $SS^T$ has entries whose values are the inner products between any
-  two rows of $S$ so consider the inner product $\langle S_i, S_j \rangle$.
-  For distinct rows $S_i$ and $S_j$ if the inner product is non-zero then there
-  must be some term in the inner product, $S_{ik} S_{jk}$, which is non-zero.
-  However, this would imply that both $S_{ik}$ and $S_{jk}$ are non-zero which
-  is not possible since only one row is chosen to be nonzero for every column
-  $k$.
-  The diagonal entries are simply $\| S_i \|_2^2 = \sum_{j=1}^n S_{ij}^2$ and
-  $S_{ij}^2 = 1$ for every nonzero entry in row $S_i$ so summing over all of
-  the columns $j$ gives $N_i$ as required.
+The entries of matrix $SS^T$ are given by the inner products between
+pairs of rows of $S$.
+Consequently, we consider the inner product $\langle S_i, S_j \rangle$.
+Recall that by construction we have that in the matrix $S$
+there is at most one non-zero entry in each column. 
+Hence for distinct rows $i\neq j$, $\langle S_i, S_j \rangle = 0$. 
+Meanwhile, the diagonal entries are given by 
+$\| S_i \|_2^2 = \sum_{j=1}^n S_{ij}^2$, i.e. we simply count the
+number of non-zero entries in row $S_i$, which is $N_i$. 
+%For distinct rows $S_i$ and $S_j$,
+%if the inner product is non-zero then there
+%  must be some term in the inner product, $S_{ik} S_{jk}$, which is non-zero.
+%  However, this would imply that both $S_{ik}$ and $S_{jk}$ are non-zero which
+%  is not possible since only one row is chosen to be nonzero for every column
+%  $k$.
+%  The diagonal entries are simply $\| S_i \|_2^2 = \sum_{j=1}^n S_{ij}^2$ and
+%  $S_{ij}^2 = 1$ for every nonzero entry in row $S_i$ so summing over all of
+%  the columns $j$ gives $N_i$ as required.
 \end{proof}
 
 \begin{Lemma}
@@ -41,47 +55,48 @@
 \end{Lemma}
 
 \begin{proof}
-  Observe that $(S S^T)_{ij} = \langle S_i, S_j \rangle$ which is the inner
-  product between rows of $S$.
-  Then:
-
+Continuing the previous analysis, we have that $(S S^T)_{ij} = \langle S_i, S_j \rangle$,  the inner product between rows of $S$.
+Taking the expectation, 
   \begin{align}
     \E (S_i \cdot S_j) &= \E \left( \sum_{k=1}^n S_{ik} S_{jk} \right) \\
                        &= \sum_{k=1}^n \E (S_{ik} S_{jk}).
   \end{align}
-  For a fixed column $k$, if row $i \ne j$ then by Lemma \ref{lem:
-  orthogonal_rows} we know that $\langle S_i, S_j \rangle = 0$ and
-  hence $\E (S_i \cdot S_j) = 0.$
-  Otherwise, $i=j$ and this is exactly the row norm of $S_i$ which in expectation
-  is $n/m$.
-  This is because $S_{ik}^2 = 1$ with probability $1/m$ and 0 otherwise
-  so that $\E S_{ik}^2 = 1/m$.
-  Hence, by linearity we obtain the following which proves the claim.
-
+ %For a fixed column $k$, if row $i \ne j$ then b
+By Lemma \ref{lem:orthogonal_rows}, we know that for $i \neq j$ then $\langle S_i, S_j \rangle = 0$ and hence $\E (S_i \cdot S_j) = 0.$
+Otherwise, $i=j$
+and we have a sum of $n$ random entries.
+With probability $\frac1{m}$, $S^2_{ik} = 1$,
+coming from the two events $S_{ik} = -1$ with probability
+$\frac1{2m}$, and $S_{ik}=1$, also with probability $\frac1{2m}$. 
+%and this is exactly the row norm of $S_i$ which in expectation
+% is $n/m$.
+%  This is because $S_{ik}^2 = 1$ with probability $1/m$ and 0 otherwise
+%  so that $\E S_{ik}^2 = 1/m$.
+%  Hence, by linearity we obtain the following which proves the claim.
+Then by linearity of expectation we have
   \begin{equation}
     \E (S_i \cdot S_i) = \sum_{k=1}^n \E S_{ik}^2 =
      \frac{n}{m}.
   \end{equation}
 \end{proof}
 
-\begin{Lemma} \label{lem: covariance_matrix}
-  The covariance is identity: $\E(S^TS) = I_{n \times n}$
+\begin{Lemma} \label{lem:covariance_matrix}
+  The covariance matrix is the identity: $\E(S^TS) = I_{n \times n}$
 \end{Lemma}
 
 \begin{proof}
-  Observe that $\E(S^T S)_{ij} = \langle S^T_i, S^j \rangle = \langle S^i, S^j
-  \rangle$ so we can consider only dot products betwen columns of $S$.
-  For a particular entry in the inner product the terms are $S_{ki}S_{kj}$ which
-  is 1 only when both $S_{ki}$ and $S_{kj}$ are the same sign, -1 when both
-  terms are opposite sign, and 0 if either of the two is 0.
+Observe that $\E(S^T S)_{ij} = \langle S^T_i, S^j \rangle = \langle S^i, S^j
+\rangle$ so now we consider dot products betwen columns of $S$.
+Recall that each column $S^i$ is a basis vector with unit norm. 
+Hence for $i=j$, $\langle S^i, S^i \rangle = 1$.
 
-  If $i=j$ then the inner product is exactly the norm of a column of $S$
-  which, by construction, is exactly 1.
-  If $i \ne j$ then we can use linearity of expecation and independence of the
-  random variables to consider only $\E(S_{ik} S_{jk}) = \E(S_{ik}) \E(S_{jk})
-  = 0$ by Lemma \ref{lem: zero-mean}.
-  This shows that
-
+For $i\neq j$, the inner product is only non-zero if $S^i$ and $S^j$
+have their non-zero entry in the same location, $k$.
+The inner-product is $1$ when $S_{ki}$ and $S_{kj}$ have the same sign,
+and $-1$ when they have opposite signs.
+The probability of these two cases are equal, so the result is zero in
+expectation. 
+In summary then, 
   \begin{equation*}
     \E (S^T S)_{ij} =
     \begin{cases}
@@ -113,19 +128,18 @@
 
 
 \begin{mydef}
-  A zero-mean random vector $s \in \R^n$ is 1-sub-Gaussian if for any $u \in \R^n$
+  A zero-mean random vector $s \in \R^n$ is sub-Gaussian if for any $u \in \R^n$
   we have for all $\eps > 0$
-
   \begin{equation}
     \prob [ \langle s, u \rangle \ge \eps \| u \|_2 ] \le \exp(-\eps^2/2).
   \end{equation}
 \end{mydef}
 
-\begin{rem}
-  If, instead, $\frac{1}{\sqrt{m}}$-sub-Gaussian distributions are necessary
-  then one can sample from $S'$ a $1$-sub-gaussian distribution and perform the
-  normalisation $S = S'/\sqrt{m}$.
-\end{rem}
+%\begin{rem}
+%  If, instead, $\frac{1}{\sqrt{m}}$-sub-Gaussian distributions are necessary
+%  then one can sample from $S'$ a $1$-sub-gaussian distribution and perform the
+%  normalisation $S = S'/\sqrt{m}$.
+%\end{rem}
 
 \begin{Lemma}[Rows of CountSketch are sub-Gaussian]
   Let $S$ be an $m \times n$ random matrix sampled according to the CountSketch
@@ -134,20 +148,21 @@
 \end{Lemma}
 
 \begin{proof}
-  Fix a row $S_i$ of $S$ and let $X = \langle S_i, u \rangle$.
-  If either $S_i$ or $u$ is a zero vector then the
-  inequality in the sub-Gaussian definition will always be true so assume that
+Fix a row $S_i$ of $S$ and let $X = \langle S_i, u \rangle$.
+If either $S_i$ or $u$ is a zero vector then the
+inequality in the sub-Gaussian definition is trivially met, so assume that
   this is not the case.
-  We need the following version of Bernstein's Inequality:
-  when $X$ is a sum of $X_1,\ldots,X_n$ and $|X_j| \le M$ for all $j$ then for
+We need the following version of Bernstein's Inequality:
+  when $X$ is a sum of $n$ random variables $X_1,\ldots,X_n$ and $|X_j| \le M$ for all $j$ then for
   any $t > 0$
 
   \begin{equation} \label{eq: Bernstein}
     \prob (X > t) \le \exp \left( - \frac{t^2 / 2}{\sum_j \E X_j^2 + Mt/3
     } \right).
   \end{equation}
-  Now, $X = \sum_{j=1}^n S_{ij} u_j$ which is a sum of zero-mean random variables.
-  Also, $|X_j| = |S_{ij} u_j| \le \| u \|_2$ for every $j$ and $\E X_j^2 =
+
+Now consider $X = \sum_{j=1}^n S_{ij} u_j$, which is a sum of zero-mean random variables.
+We have $|X_j| = |S_{ij} u_j| \le \| u \|_2$ for every $j$ and $\E X_j^2 =
   u_j^2/m$.
   Taking $t = \eps \| u \|_2$ in Equation (\ref{eq: Bernstein}) and cancelling
   $\| u \|_2^2$ terms gives
@@ -157,10 +172,11 @@
     2}{1/m + \eps /3 } \right)
     \le \exp(-\eps^2/2).
   \end{equation}
-  The final inequality holds whenever $1/m + \eps / 3 \le 1$ and indeed this is
-  true whenever $\eps \le 3 - 3/m$.
-  However, since $\eps \in (0,1)$ the inequality holds
-  for all choices of $\eps$ provided $m>1$.
+  The final inequality holds whenever $1/m + \eps / 3 \le 1$, which
+  bounds $\eps \le 3 - 3/m$.
+%  However, since $\eps \in (0,1)$ the inequality holds
+Imposing $m>1$, this is satisfied for all $\eps \in (0,1)$. 
+%  for all choices of $\eps$ provided $m>1$.
   % We need the following version of Chernoff bound when $X$ is a sum of $X_1,
   % \ldots,
   % X_n$, for any $t > 0$ (can alter to minimal and product of expectations by
@@ -207,21 +223,23 @@
   % which is true provided that $t \ge \frac{(1 + \sqrt{2}) \eps}{\|
   % u \|_2}$ (positive solution)and hence for any $\eps > 0$ there is a $t > 0$ for
   % which the sub-Gaussian property is true.
-
 \end{proof}
 
 \subsection{Spectral Bound}
-Here we need to show that for a constant $\eta$ which is independent of $m$
-and $n$ we have:
+For the spectral bound, we need to show that for a constant $\eta$
+which is independent of $m$ and $n$ we have:
 
-\begin{equation} \label{eq: spectral_bound}
+\begin{equation} \label{eq:spectral_bound}
   \| \E \left( S^T (S S^T)^{-1} S \right) \|_2 \le \eta \frac{m}{n} I_n.
 \end{equation}
-Before proving this statement for the CountSketch transform we give the following
-lemma which is necessary to conclude the analysis.
 
-\begin{Lemma} \label{lem: exp_recip_bernoulli}
-  Let $X = \sum_{i=1}^n X_i$ where each $X_i$ is iid Bernoulli rv with
+We start with a lemma on the behaviour of Bernoulli random variables
+which supports the analysis. 
+%Before proving this statement for the CountSketch transform we give the following
+%lemma which is necessary to conclude the analysis.
+
+\begin{Lemma} \label{lem:exp_recip_bernoulli}
+  Let $X = \sum_{i=1}^n X_i$ where each $X_i$ is an iid Bernoulli random variable with
   parameter $p$.
   Then
   \begin{equation}
@@ -230,7 +248,7 @@ lemma which is necessary to conclude the analysis.
 \end{Lemma}
 
 \begin{proof}
-  Observe that $X$ is a sum of Bernoulli rvs so has a Binomial probability
+  Observe that $X$ is a sum of Bernoulli rvs and so shares the Binomial probability
   mass function, hence:
 
   \begin{align}
@@ -240,7 +258,9 @@ lemma which is necessary to conclude the analysis.
                 (1-p)^{n-k} \\
                 &= \frac{1 - (1-p)^{n+1}}{p(n+1)}.
   \end{align}
-The last equality holds by the Binomial Theorem.
+where the last equality holds by the Binomial Theorem: we have a
+(scaled) sum over the full Binomial distribution excepting the first term,
+${n+1 \choose 0} p^{0}(1-p)^{n+1} = (1-p)^{n+1}$. 
 
 
 % PROOF OUTLINE FOR THE BINOMIAL THEOREM DEDUCTION.
@@ -264,14 +284,14 @@ The last equality holds by the Binomial Theorem.
 
 \begin{thm} \label{thm: spectral-theorem}
   Let $S$ be an $m \times n$ CountSketch matrix.
-  Assume that $S$ contains no zero rows.
-  Then the spectral bound (\ref{eq: spectral_bound}) is met with $\eta = 1$.
+  Assume that $S$ contains no all-zero rows.
+  Then the spectral bound \eqref{eq:spectral_bound} is met with $\eta = 1$.
 \end{thm}
 
 \begin{proof}
   We need to analyse the quantity $\E \left( S^T (S S^T)^{-1} S \right)$ and
   show this is a diagonal matrix whose entries are a constant multiple of $m/n$.
-  First we deal with the term $SS^T$ which by Lemma \ref{lem: orthogonal_rows}
+  First we deal with the term $SS^T$ which by Lemma \ref{lem:orthogonal_rows}
  is a diagonal matrix whose entries are $N_i$, the number of nonzeros in row
   $S_i$.
   % Observe that $SS^T$ is the matrix containing all inner products between rows
@@ -282,20 +302,22 @@ The last equality holds by the Binomial Theorem.
   % point) we may assume
   % that all rows are non-zero and hence the diagonal entries are the
   % norms of the rows of $S$, which are thus all greater than zero.
-  Hence we may take $D = SS^T$ with entries $D_{ii} = N_i$.
-  Since all the diagonal entries in $D$ are non-zero, $D^{-1}$ exists and is
+  Hence we may write $D = SS^T$ with entries $D_{ii} = N_i$ and
+  off-diagonal entries zero.
+  Since by our asusmption
+  all the diagonal entries in $D$ are non-zero, $D^{-1}$ exists and is
   precisely $D^{-1}_{ii} = 1/ N_i$. %$\| S_i \|_2^2$.
   Now, we may write $S^T (SS^T)^{-1} S = S^T D^{-1} S $ and distribute the
-  entries of $D^{-1}$ as $S^T D^{-1/2} D^{-1/2} S$ which is well-defined as
+  entries of $D^{-1}$ as $S^T D^{-1/2} D^{-1/2} S$, which is well-defined as
   $D^{-1}$ is both diagonal and positive.
-  Set $\bar{S} = D^{-1/2} S$ which is simply $S$ but scaled by its row norms as:
+Then we set $\bar{S} = D^{-1/2} S$, which is simply $S$ but scaled by its row norms as:
 
   \begin{equation} \label{eq: S-bar_vals}
     \bar{S}_{ij} = \frac{S_{ij}}{N_i^{1/2}}.
   \end{equation}
-  So consider the matrix $\bar{S}^T \bar{S}$ which is the collection
+This expresses our object of interest as the matrix $\bar{S}^T \bar{S}$, which is the collection
   of scaled inner products between the columns of $S$.
-  In particular, for every column $\bar{S}^j$ the nonzero entry is located at
+  In particular, for every column $\bar{S}^j$ the unique nonzero entry is located at
   $\bar{S}_{h(j),j}$ and takes value $S_{h(j),j}/N_{h(j)}^{1/2}$.
 
   % First, suppose that $i \ne j$ and deal with the cross terms.
@@ -314,27 +336,26 @@ The last equality holds by the Binomial Theorem.
   % $\bar{S}$
   % and $S$ are located in exactly the same locations)
   and its entries are just
-  rescaled versions of those in $S$, we know from Lemma \ref{lem:
-  covariance_matrix} that in expectation the only entries we need to consider
+  rescaled versions of those in $S$, we know from Lemma \ref{lem:covariance_matrix} that in expectation the only entries we need to consider
   are those lying on the diagonal.
   Then the inner product to consider is $\langle \bar{S}^i, \bar{S}^i \rangle$
   which  is exactly the norm of column $\bar{S}^i$.
-  Equation (\ref{eq: S-bar_vals}) shows that $(\bar{S}^T \bar{S})_{ii} = 1/
+  Equation \eqref{eq: S-bar_vals} means that $(\bar{S}^T \bar{S})_{ii} = 1/
   N_{h(i)}$ and
   % Ordinarily the inner product of two columns would be
   %  1 but is now rescaled by a $1/ N_{h(i)}^{1/2}$ term from both $\bar{S}^T$
   %  and $\bar{S}$ so now the diagonal entries of $\bar{S}^T \bar{S}$ are
   % $1/ N_{h(i)}$.
-  Lemma \ref{lem: exp_recip_bernoulli} can be used to bound $1/ N_{h(i)}$ in
+  Lemma \ref{lem:exp_recip_bernoulli} can be used to bound $1/ N_{h(i)}$ in
   expectation
   %Indeed, $N_{h(i)} = \| S_{h(i)} \|_2^2$
   as it is a sum of Bernoulli random variables.
-  Indeed, $N_{h(i)} = \sum_{j=1}^n \mathbf{1}(S_{h(i),j}^2)$ where $\mathbf{1}
+Indeed, $N_{h(i)} = \sum_{j=1}^n \mathbf{1}(S_{h(i),j}^2)$ where $\mathbf{1}
   (S_{h(i),i})$ is an indicator variable for the presence of a nonzero in entry
   $S_{h(i),j}$.
   No row of $S$ is identically zero so certainly $S_{h(i), i}^2 = 1$ and for
   any $j \ne i$ then $\mathbf{1}(S_{h(i),j}) = 1$ with probability $1/m$; for a
-  given column rows are chosen uniformly at random in the CountSketch
+  given column, non-zero rows are chosen uniformly at random in the CountSketch
   construction.
   This is exactly when $h(j) = h(i)$ so:
 
@@ -342,29 +363,34 @@ The last equality holds by the Binomial Theorem.
     N_{h(i)} = \sum_{j=1}^n S_{h(i), j}^2 = 1 + \sum_{\substack{ j \ne
      i \\ h(j) = h(i)}} S_{h(i), j}^2.
   \end{equation}
-  Hence, we may take $N_{h(i)} = 1+X$ as in the final equality of
-  Equation (\ref{eq: split_row}) and
-  invoke Lemma \ref{lem: exp_recip_bernoulli} with $p=1/m$ and $n-1$
-  trials (over all columns $j \ne i$ of $S$ as column $i$ contributes the
-  1 in the expression $1+X$) to see:
+  Hence, we may write $N_{h(i)} = 1+X$
+  %as in the final equality of Equation (\ref{eq: split_row})
+  and invoke Lemma \ref{lem:exp_recip_bernoulli} with $p=1/m$ and $n-1$
+  trials (since there are $n-1$ columns  columns $j \ne i$) to obtain:
 
-  \begin{align}
-    \E \left( \frac{1}{1+X} \right) &= \frac{1 - (1-\frac{1}{m})^n}{n/m} \label{eq: expectation}\\
-                                &\le \frac{1}{n/m} = \frac{m}{n} \label{eq: final-expectation}.
-  \end{align}
-Overall we obtain (with the $i \ne j$ case holding with equality):
+%  \begin{align}
+\[
+\E \left( \frac{1}{1+X} \right) %&
+= \frac{1 - (1-\frac{1}{m})^n}{n/m}
+%\label{eq: expectation}\\
+%&
+\le \frac{1}{n/m} = \frac{m}{n}
+%\label{eq: final-expectation}.
+\]
+%\end{align}
+Thus, 
+%Overall we obtain (with the $i \ne j$ case holding with equality):
 
   \begin{equation}
-    \E \left( \bar{S}^T \bar{S} \right)_{ij} \le
+    \E \left( \bar{S}^T \bar{S} \right)_{ij} 
     \begin{cases}
-      \frac{m}{n}, & \text{if}\ i=j \\
-      0, & \text{if}\ i \ne j.
+      \qquad\le \frac{m}{n}, & \text{if}\ i=j \\
+      \qquad= 0, & \text{if}\ i \ne j.
     \end{cases}
   \end{equation}
-  Finally, this implies that $\E (S^T (SS^T)^{-1}S) \preceq \frac{m}{n} I_n$ and
-  hence the spectral norm is bounded above by $m/n$ so property
-  (\ref{eq: spectral_bound}) holds with $\eta = 1$ as claimed.
-
+That is, $\E (S^T (SS^T)^{-1}S) \leq \frac{m}{n} I_n$
+so \eqref{eq:spectral_bound} holds with $\eta = 1$,
+and the spectral norm is bounded above by $m/n$ 
 \end{proof}
 
 % \begin{Cor} \label{cor: unbiased-sketch}

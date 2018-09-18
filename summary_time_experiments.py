@@ -137,8 +137,8 @@ def full_summary_times_and_plots(row_list, column_list):
 
     print(results)
 
-
-    np.save('figures/summary_time_vs_sparsity.npy', results)
+    file_name = 'figures/summary_time_vs_sparsity' + "_n_" + str(n) + '.npy'
+    np.save(, results)
     print(json.dumps(results,indent=4))
 
     for n in param_grid['rows']:
