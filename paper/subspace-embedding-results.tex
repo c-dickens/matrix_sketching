@@ -1,67 +1,98 @@
 %!TEX root = sketching-convex-ols.tex
+\newcommand{\eat}[1]{}
+\newcommand{\SRHT}{SRHT\xspace}
 
+Our work is founded on the use of random projections to obtain
+subspace embedding (Section~\ref{sec: preliminaries}).
+In this section, we perform empirical studies to answer three central
+questions:
+(1) time cost: does the sketching approach provide speed-ups in
+practice;
+(2) accuracy: how large does the projection dimenions need to be in
+order to achieve small error;
+(3) subspace embedding:
+according to the theoretical analysis, the CountSketch requires a
+higher projected dimension than other sketch methods to obtain a
+subspace embedding -- but is this borne out in practice? 
+
+\eat{
 As outlined in Section \ref{sec: preliminaries} the key quantity that we would
 like to understand is the subspace embedding.
 The central questions we seek to answer are: (1) whether the time complexity
 in practise matches the theory, (2) how large should the projection
 dimension be in order to obtain small error (3) the CountSketch
 theoretically requires a larger projection to obtain the subspace embedding
-property, is this reflected in practise?
+property, is this reflected in practise?}
 
-\noindent\textbf{Time Complexity compared to sparsity.}
-Only the CountSketch and SRHT are tested because the explicit matrix
-multiplication for the Gaussian sketch is exceedingly high which even
-for moderately sized inputs will be prohibitive compared to the other two methods.
-The CountSketch takes
-$O(\nnz{A})$ time to construct a subspace embedding
-whereas the SRHT requires $O(nd \log n)$.
-Although the SRHT does not scale with the sparsity of the data, for the
-practitioner it
-will be of interest to know where, if any, there is a threshold at which one of
-the transforms is preferable from the perspective of time cost.
-To test this claim we generated random matrices of size $n=50000$ with varying $d$
-in $\{ 10, 100, 1000,5000 \}$.
-This captures a range of aspect ratios seen in the real datasets that we
-test as described in Table \ref{table: data-facts}.
-The \textit{density} parameter $\rho$ (varied from 0 to 1) denotes the
-fraction of nonzeros in the test matrix $A$ which was generated using the
-\texttt{scipy.sparse.random(n,d,density=$\rho$)} routine, returning a
-matrix of $nd\rho$ nonzero entries chosen independently from a standard normal
-distribution.
-Both sketching methods are agnostic to the distribution of choice so from a
-speed perspective this makes no difference.
-A projection dimension of $m = 5d$ was chosen for the summarisation - we note
-that  sufficient
-sketching dimensions will be discussed in the succeeding section.
-As seen in Figure \ref{fig: summary-time-50000}, both transforms scale
-consistently with the theory: the CountSketch has increased time to compute the
-summary as the density of the data increases and the time taken to compute the
-SRHT embedding is generally stable as the density varies.
-One key point to take away is that the CountSketch is \textit{an order
-of magnitude faster} to compute the embedding compared to the SRHT even as the
-density increases;
-as $n$ grows to be significantly larger than $d$, this saving could be vast.
-Interestingly, our implementations do not show a cross over point for corresponding
-settings of the parameters i.e for a fixed $(n,d,m)$ triple the time to compute the
-CountSketch summary is always significantly less than that for
-the SRHT summary.
-This behaviour is consistent across each of the setup values so only those for
-the $n = 50000$ are given here.
+\medskip
+\noindent\textbf{Time cost for sparse data.}
+We begin by evaluating the scalability of sketching for inputs that
+are large and sparse.
+We immediately remove the (dense) Gaussian sketch from consideration,
+since the time cost for explicit matrix multiplication is excessively
+high even for moderately sized inputs.
+We subsequently focus our attention on CountSketch and \SRHT. 
+To construct a subspace embedding, 
+the CountSketch takes
+time $O(\nnz{A})$, while the \SRHT requires $O(nd \log n)$.
+That is, CountSketch explicitly scales (linearly) with the sparsity of
+the data, whereas \SRHT, while fast, does not directly depend on the
+sparsity.
+We expect CountSketch to be preferable for very sparse data,
+and investigate whether there is a point where the input density is
+such that \SRHT is faster. 
 
-In addition, the time saving of using the CountSketch over the SRHT is reflected
-on the real datasets with the results given in Table
-\ref{table: real-data-subspace-embedding}.
-CountSketch embeddings are found at a fraction of the time for the SRHT which
-allows us to sketch the data in less than 1 second on all but two of the
-experimental setups.
-Moreover, the (at least factor 10) speedup is in general observed on each of the
-real datasets, particularly those which are `tall-and-skinny', which is consistent
-with the synthetic data experiments.
-For the wider matrices ($d>1000$) the SRHT times out in our
-implementation so we report no results.
-Although the embedding time difference is quite severe in some cases, we note
-that the time complexity of our SRHT implementation is comparable to the test
-cases of the Hadamard transform that we use given in its repository.
+\noindent
+\textit{Experimental setup.}
+We generated random $n \times d$ matrices with $n=50,000$ and varying $d$
+in $\{ 10, 100, 1000, 5000 \}$.
+That is, the aspect ratio varies from $2 \times 10^{-4}$ to $1\times
+10^{-1}$.
+This is consistent with the range observed for the real data sets studied (see
+Table \ref{table: data-facts}). 
+We varied the \textit{density} of the synthetic data.
+We define density $\rho$ simply as the fraction of entries in the matrix $A$
+that are non-zero.
+We used the \texttt{scipy.sparse.random} routine to instantiate $A$,
+where non-zero entries are chosen iid normal. 
+Note that the speed of our sketching methods does not depend on the data
+distribution, so we are not overly concerned with this choice for
+these timing experiments. 
+We initially choose the projection dimension $m = 5d$; this parameter
+is investigated in more detail in subsequent sections. 
+
+\noindent
+\textit{Timing results.}
+Figure~\ref{fig: summary-time-50000} shows the timing results as
+density varies for the four different input dimensions $d$.
+The results appear consistent with the theory.
+There is an increasing
+trend for the time to build the CountSketch as the density of the data
+increases.
+Meanwhile, the time for the \SRHT embedding remains stable across
+density values. 
+%
+However, our main take-away from this experiment is that CountSketch
+is \textit{an order of magnitude faster}, even in the densest regime. 
+In particular, we do not observe any cross over point where the \SRHT
+embedding is faster to build than CountSketch for a given input
+dimensionality. 
+We saw the same property for varying values of $n$, so we do not
+report them. 
+Similar behavior is also seen on real datasets (Table
+\ref{table: real-data-subspace-embedding}), where CountSketch is
+uniformly faster than \SRHT, sometimes by multiple orders of
+magnitude.
+This is most pronounced for the ``tall-and-skinny'' (i.e. low aspect
+ratio) data sets. 
+In absolute terms, the time cost to build the CountSketch is below one
+second in all but the largest data sets. 
+Note that in a few experiments with large values of $d$ ($d>1000$),
+the \SRHT failed to complete, and so results for these tests are
+omitted. 
+The limiting factor appears to be the computation of Hadamard
+transforms: these are individually relatively fast, but in aggregate create a
+pinch point. 
 
 
 \begin{figure}
@@ -113,9 +144,9 @@ cases of the Hadamard transform that we use given in its repository.
 \begin{adjustbox}{width=1\textwidth}
 \small
 
-\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+\begin{tabular}{|c|c|c|c|c|c|c||c|c|c|c|c|c|}
   \hline
-\multirow{2}{*}{Dataset} & \multicolumn{3}{c|}{CountSketch (time)} & \multicolumn{3}{c}{SRHT (time)} & \multicolumn{3}{c|}{CountSketch (error)} & \multicolumn{3}{c|}{SRHT (error)} \\
+\multirow{2}{*}{Dataset} & \multicolumn{3}{c|}{CountSketch (time)} & \multicolumn{3}{c||}{SRHT (time)} & \multicolumn{3}{c|}{CountSketch (error)} & \multicolumn{3}{c|}{SRHT (error)} \\
                         &     $1d$       &  $2d$            & $5d$          & $1d$          & $2d$        & $5d$         &     $1d$       &  $2d$          &   $5d$         &  $1d$          & $2d$         & $5d$  \\
 \hline
 
@@ -172,29 +203,37 @@ aspect ratios.}
 
 % -----------------------------------------------------------------------------
 
+\medskip
+\noindent\textbf{Error and Embedding Dimension}
+Although the theory shows that obtaining a subspace embedding is
+sufficient property to instantiate the IHS scheme,
+the analysis does not reveal how big the \textit{sampling factor}
+$\gamma$ must be relative to $d$ in order to ensure a subspace
+embedding is obtained.
+That is, we seek to empirically determine constants that are otherwise
+hidden within the $O(\cdot)$ notation. 
+We study when the $SA$ matrix achieves full rank, as we vary input
+parameters such as the aspect ratio of the matrix $A$. 
 
-\noindent\textbf{Sufficient Sketching Dimension}
-Although our theory shows that a subspace embedding is sufficient to use a random
-projection within the IHS scheme, we first need to understand how large the
-\textit{sampling factor} $\gamma$ must be relative to $d$ in order to obtain a subspace
-embedding.
-The constants within the $O(\cdot)$ term must be understood to ensure that $SA$
-is of full rank and we investigate how this changes depending on the aspect
-ratio of the matrix.
-We carry out this experiment on synthetic data and then test again on the real
+\textit{Experimental Setup.}
+We carry out this experiment on synthetic data where we can easily
+vary aspect ratio, and then confirm our findings on the real
 datasets.
 For this set of experiments we fix $n$ and then generate a selection of matrices
 of full density
 ranging from `tall-and-skinny' to `fat' matrices by choosing $d$ to vary
 from roughly $0.05n$ to $0.5n$ over different distributions.
-The results from choosing matrices whose entries are standard normal are given
-in Figure \ref{fig: distortion-sampling-factor}.
-The value of $\eps$ was then measured: this is referred to as the
+The empirical value of $\eps$ can be measured: this is referred to as the
 \textit{distortion} and is the error induced by the approximate matrix product
 computation $\|A^T A - A^T S^T S A \|_F/\|A^TA\|_F$.
-Experiments were repeated 10 times and the mean distortion has been reported.
-In addition, we also measure the rank of the returned matrix $SA$ as it must
-be preserved for a true subspace embedding.
+Results on the distortion for input matrices $A$ whose entries chosen iid normal are given
+in Figure \ref{fig: distortion-sampling-factor}.
+Each experiment is repeated 10 times, and the mean distortion reported.
+We also measured the rank of the returned matrix $SA$, and discuss
+when it is not preserved (i.e. $S$ does not provide a subspace
+embedding). 
+
+\textit{Accuracy and Dimensionality Results.}
 The plots indicate that in general, the distortion induced by the CountSketch is
 comparable with the Gaussian sketches however both are a constant factor worse
 than the SRHT across each of the settings for this distribution.
@@ -268,6 +307,8 @@ One can see the progression of the rank retention through analysing the w$n$a
  of the dimensionality because it is much faster and has comparable distortion
  to the SRHT even when rank is lost.
 
+\medskip
+\textbf{Summary.}
  We conclude the section by referring to the questions asked originally of the
  embedding behaviour.
  First we observed that the CountSketch embedding scaled with the density of the
