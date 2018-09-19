@@ -1,7 +1,7 @@
 '''
 matplotlib config file for plots.
 '''
-
+from experiment_parameter_grid import param_grid
 import matplotlib as mpl
 mpl.use('TkAgg')
 #mpl.use('Agg')
@@ -20,6 +20,9 @@ import matplotlib.pyplot as plt
 # # Use latex font.
 # # rc(‘font’, **{‘family’: ‘serif’, ‘serif’: [‘Computer Modern’]})
 # # rc(‘text’, usetex=True)
+
+my_markers = ['.', 's', '^', 'D', 'x', '+', 'V', 'o', '*']
+col_markers = {param_grid['columns'][i]: my_markers[i] for i in range(len(param_grid['columns']))}
 
 def update_rcParams():
     # This mpl style is from the UCSC BME163 class.

@@ -2,6 +2,7 @@
 
 CWT is the Clarkson-Woodruff Transform (CountSketch) and SRHT is is the randomized
 hadamard Transform'''
+import os.path
 import json
 import itertools
 from pprint import PrettyPrinter
@@ -32,36 +33,6 @@ col_markers = {param_grid['columns'][i]: my_markers[i] for i in range(len(param_
 # print(col_markers)
 random_seed = param_grid['random_state']
 np.random.seed(random_seed)
-# sketch_names = ["CountSketch", "SRHT", "Gaussian"]
-# sketch_functions = {"CountSketch": countsketch.CountSketch,
-#                     "SRHT" : srht.SRHT,
-#                     "Gaussian" : gaussian.GaussianSketch}
-
-# param_grid = {
-#         'num trials' : 5,
-#         'rows' : [10000, 25000, 50000, 100000],#, 100000,250000],
-#         'columns' : [10,50,100, 500, 1000],#, 100, 500, 1000],
-#         'sketch_factors' : 5,
-#         'density' : np.linspace(0.1,1.0, num=10)
-#     }
-
-
-
-# plotting_params = {"CountSketch" : {"colour" : "b",
-#                                     "line_style" : '-',
-#                                     "marker" : "o" },
-#                    "SRHT" : {"colour" : "k",
-#                              "marker" : "s",
-#                              "line_style" : ':'},
-#                    "Gaussian" : {"colour" : "r",
-#                                  "marker" : "v",
-#                                  "line_style" : "-."},
-#                    "Classical" : {"colour" : "m",
-#                                   "marker" : "*"},
-#                     "Exact" : {"colour" : "mediumspringgreen",
-#                                "marker" : "^"}
-#                                   }
-
 
 def experiment_summary_time_vs_sparsity(n_rows, n_cols, n_trials, sketch_size, densities):
     '''
@@ -80,6 +51,7 @@ def experiment_summary_time_vs_sparsity(n_rows, n_cols, n_trials, sketch_size, d
 
 
     for density in densities:
+        print("Testing (n,d,density) = ({},{},{})".format(n_rows, n_cols, density))
         A = sparse.random(n_rows,n_cols,density).toarray()
         print('Testing density', density)
         for trial in range(n_trials):
@@ -108,61 +80,132 @@ def full_summary_times_and_plots(row_list, column_list):
     '''This is a wrapper to do the above `experiment_summary_time_vs_sparsity`
     experiment over the entire parameter grid as defined above'''
 
-    results = {
-        "CountSketch" : {},
-        "SRHT"        : {}
-    }
+    # results = {
+    #     "CountSketch" : {},
+    #     "SRHT"        : {}
+    # }
 
-    for key in results.keys():
-        results[key] = {}
-        for n in row_list:
-            results[key][n] = {}
+    results = {}
+
+    for n in row_list:
+        results[n] = {}
+        for sketch_name in ["CountSketch", "SRHT"]:
+            results[n][sketch_name] = {}
             for d in column_list:
-                    results[key][n][d] = {}
+                results[n][sketch_name][d] = {}
+
     print(results)
+    n_trials = param_grid['num trials']
+
 
     for n_rows in row_list:
-        n_trials = param_grid['num trials']
-        print('Testing design matrix: {} rows)'.format(n_rows))
-        exp_result_list = Parallel(n_jobs=-1)(delayed(experiment_summary_time_vs_sparsity)\
-                        (n_rows,cols,n_trials,5*cols,param_grid['density']) for cols in column_list)
-        print(exp_result_list)
+        print(n_rows)
+        file_name = 'figures/summary_time_vs_sparsity_' + str(n_rows) + '.npy'
+        file_name_json = 'figures/summary_time_vs_sparsity_' + str(n_rows) + '.json'
+        print("Checking file: {}".format(file_name))
+        try:
+            results = np.load(file_name)[()]
+            pretty = PrettyPrinter(indent=4)
+            pretty.pprint(results)
+            #print(results)
+            print("Already tested n={} so read in from file".format(n_rows))
+            # print(list(results["CountSketch"][n_rows].keys()))
+            print(list(results[n_rows]["CountSketch"].keys()))
+            unseen_cols = []
+            for col in column_list:
+                # if col in results["CountSketch"][n_rows].keys():
+                if col in results[n_rows]["CountSketch"].keys():
+                    continue
+                else:
+                    unseen_cols.append(col)
+            if len(unseen_cols) == 0 :
+                print("{} new columns to test - seen all column setups".format(len(unseen_cols)))
+                continue
+            else:
+                print("{} new columns to test".format(len(unseen_cols)))
+                unseen_cols = list(set(column_list) - set(results[n_rows]["CountSketch"].keys()))
+                print("New cols to test: {}".format(unseen_cols))
 
-        for ii in range(len(column_list)):
-            dicts = exp_result_list[ii]
-            count_sketch_dict= dicts[0]
-            srht_dict = dicts[1]
-            results["CountSketch"][n_rows][column_list[ii]] = count_sketch_dict
-            results["SRHT"][n_rows][column_list[ii]] = srht_dict
+                for ii in range(len(unseen_cols)):
+                    # results["CountSketch"][n_rows][unseen_cols[ii]] = {}
+                    # results["SRHT"][n_rows][unseen_cols[ii]] = {}
+                    results[n_rows]["CountSketch"][unseen_cols[ii]] = {}
+                    results[n_rows]["SRHT"][unseen_cols[ii]] = {}
 
-    print(results)
+                new_exp_results = Parallel(n_jobs=-1)(delayed(experiment_summary_time_vs_sparsity)\
+                                (n_rows,cols,n_trials,5*cols,param_grid['density']) for cols in unseen_cols)
 
-    file_name = 'figures/summary_time_vs_sparsity' + "_n_" + str(n) + '.npy'
-    np.save(, results)
-    print(json.dumps(results,indent=4))
+                for ii in range(len(unseen_cols)):
+                    print(ii)
+                    dicts = new_exp_results[ii]
+                    count_sketch_dict= dicts[0]
+                    srht_dict = dicts[1]
+                    # results["CountSketch"][n_rows][unseen_cols[ii]].update(count_sketch_dict)
+                    # results["SRHT"][n_rows][unseen_cols[ii]].update(srht_dict)
+                    results[n_rows]["CountSketch"][unseen_cols[ii]].update(count_sketch_dict)
+                    results[n_rows]["SRHT"][unseen_cols[ii]].update(srht_dict)
+                    pretty.pprint(results)
+                    np.save(file_name, results)
+        except:
+            print("File not found so test n={}".format(n_rows))
 
-    for n in param_grid['rows']:
-        fig, ax = plt.subplots(dpi=250)
-        for sketch,d in itertools.product(results.keys(), param_grid['columns']):
-            print(n,sketch,d)
-            my_colour = plotting_params[sketch]["colour"]
-            my_label = sketch + str(d)
-            my_line = plotting_params[sketch]["line_style"]
-            # this just pulls the index of d in the param list and uses that as
-            # the marker inded
-            my_marker = my_markers[param_grid['columns'].index(d)]
-            ax.plot(param_grid['density'], results[sketch][n][d].values(),
-                    color=my_colour, linestyle=my_line, linewidth=2.0,
-                    marker=my_marker, markersize=8.0,label=my_label)
+            # results["CountSketch"][n_rows] = {}
+            # results["SRHT"][n_rows] = {}
+            results[n_rows]["CountSketch"] = {}
+            results[n_rows]["SRHT"] = {}
+            for d in column_list:
+                    # results["CountSketch"][n_rows][d] = {}
+                    # results["SRHT"][n_rows][d] = {}
+                    results[n_rows]["CountSketch"][d] = {}
+                    results[n_rows]["SRHT"][d] = {}
+            #print(results)
 
-        ax.legend(title='$n$ = {}'.format(n),loc=1)
-        ax.set_yscale('log')
-        ax.set_ylabel('log(seconds)')
-        ax.set_xlabel('Density')
-        save_name = "figures/summary_time_density_"+str(n)+".pdf"
-        fig.savefig(save_name, bbox_inches="tight")
-    plt.show()
-    return results
+
+            # Experiment not done for this n so do experiment
+            n_trials = param_grid['num trials']
+            print('Testing design matrix: {} rows'.format(n_rows))
+            exp_result_list = Parallel(n_jobs=-1)(delayed(experiment_summary_time_vs_sparsity)\
+                            (n_rows,cols,n_trials,5*cols,param_grid['density']) for cols in column_list)
+
+            for ii in range(len(column_list)):
+                dicts = exp_result_list[ii]
+                count_sketch_dict= dicts[0]
+                srht_dict = dicts[1]
+                # results["CountSketch"][n_rows][column_list[ii]] = count_sketch_dict
+                # results["SRHT"][n_rows][column_list[ii]] = srht_dict
+                results[n_rows]["CountSketch"][column_list[ii]] = count_sketch_dict
+                results[n_rows]["SRHT"][column_list[ii]] = srht_dict
+            np.save(file_name, results)
+            # with open(file_name_json, 'w') as outfile:
+            #    json.dump(results, outfile)
+            # print(json.dumps(results,indent=4))
+
+
+
+
+    # for n in row_list:
+    #     fig, ax = plt.subplots(dpi=250)
+    #     for sketch,d in itertools.product(results.keys(), param_grid['columns']):
+    #         print("Plotting: ", n_rows,sketch,d)
+    #         my_colour = plotting_params[sketch]["colour"]
+    #         my_label = str(d)
+    #         my_line = plotting_params[sketch]["line_style"]
+    #         # this just pulls the index of d in the param list and uses that as
+    #         # the marker inded
+    #         my_marker = my_markers[param_grid['columns'].index(d)]
+    #
+    #         ax.plot(param_grid['density'], results[sketch][n_rows][d].values(),
+    #                     color=my_colour, linestyle=my_line, linewidth=2.0,
+    #                     marker=my_marker, markersize=8.0,label=my_label)
+    #     #ax.legend(title='$n$ = {}'.format(n),loc=1)
+    #     ax.set_yscale('log')
+    #     ax.set_ylabel('log(seconds)')
+    #     ax.set_xlabel('Density')
+    #     save_name = "figures/summary_time_density_"+str(n_rows)+".pdf"
+    #     fig.savefig(save_name, bbox_inches="tight")
+        # plt.show()
+    # return results
+
 
 def experiment_summary_distortion_vs_aspect_ratio(n_rows, n_trials, sketch_size=1.5,density=0.3):
     '''Experiment to see how distortion varies for a fixed sketch size over
