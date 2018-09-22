@@ -3,6 +3,7 @@ import pandas as pd
 from timeit import default_timer
 from scipy import optimize
 from scipy.sparse import coo_matrix
+from scipy.sparse import random
 from sklearn.datasets import make_regression
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
@@ -63,6 +64,27 @@ def generate_lasso_data(m, n, sigma=5, density=0.2):
     #scale_y = Normalizer().fit(Y)
     #new_y = scaler.transform(Y)
     return new_X, Y, beta_star
+
+# def generate_lasso_data(m, n, data_density=0.1, sigma=5, sol_density=0.2, return_sparse=True):
+#     "Generates data matrix X and observations Y."
+#     np.random.seed(1)
+#     beta_star = np.random.randn(n)
+#     idxs = np.random.choice(range(n), int((1-sol_density)*n), replace=False)
+#     for idx in idxs:
+#         beta_star[idx] = 0
+#     X = random(m,n,data_density)#np.random.randn(m,n)
+#     Y = X.dot(beta_star) + np.random.normal(0, sigma, size=m)
+#     scaler = StandardScaler(with_mean=False).fit(X)
+#     sparse_X = scaler.transform(X)
+#     dense_X = sparse_X.toarray()
+#     sparse_X = coo_matrix(sparse_X)
+
+    #scale_y = Normalizer().fit(Y)
+    #new_y = scaler.transform(Y)
+    if return_sparse:
+        return sparse_X, dense_X, Y, beta_star
+    else:
+        return dense_X, Y, beta_star
 
 
 class TestSketch(unittest.TestCase):
@@ -147,14 +169,16 @@ class TestSketch(unittest.TestCase):
         print(80*"-")
         print("TESTING LASSO ITERATIVE HESSIAN SKETCH ALGORITHM")
 
-        ncols = 250
-        nrows = 100000
+        ncols = 3
+        nrows = 1000
         sketch_size = 1000
         sklearn_lasso_bound = 10
         trials = 5
         lasso_time = 0
         print("Generating  data")
-        X, y, coef = generate_lasso_data(nrows, ncols, sigma=1.0, density=0.25)
+        #X, y, coef = generate_lasso_data(nrows, ncols, sigma=1.0, density=0.25)
+        #X, y, coef = generate_lasso_data(nrows, ncols, data_density=0.2, sigma=1.0, sol_density=0.25, return_sparse=False)
+        X,y = make_regression(nrows,ncols)
         print("Converting to COO format")
         sparse_data = coo_matrix(X)
         rows, cols, vals = sparse_data.row, sparse_data.col, sparse_data.data
@@ -163,32 +187,22 @@ class TestSketch(unittest.TestCase):
         clf = Lasso(sklearn_lasso_bound)
         for i in range(trials):
             lasso_start = default_timer()
-            x_opt = clf.fit((X.shape[0])*X,(X.shape[0])*y).coef_
+            lasso_skl = clf.fit( np.sqrt(X.shape[0])*X, np.sqrt(X.shape[0])*y)
             lasso_time += default_timer() - lasso_start
         print("LASSO-skl time: {}".format(lasso_time/trials))
+        x_opt = lasso_skl.coef_
         print("Potential norm bound for ihs: {}".format(np.linalg.norm(x_opt,1)))
-        #print("Optimum weights:")
-        #print(x_opt)
-        ihs_lasso_bound = np.linalg.norm(x_opt,1) + 1E-5
-        ### Test QP formulation with quadprog
-        # result = qp_lasso(X, y, ihs_lasso_bound)
-        # x = result[0]
-        # x_qp = -1.0*(x[ncols:] - x[:ncols])
-        # #print("x opt ",x_opt)
-        # #print("QP x", -1.0*x_qp)
-        # np.testing.assert_almost_equal(np.linalg.norm(x_opt,1), np.linalg.norm(x_qp,1), decimal=1)
-        # print("QP SOLVER AND SKLEARN HAVE CORRESPONDING SOLUTIONS")
 
 
         for sketch_method in sketch_names:
             ihs_lasso = IHS(data=X, targets=y, sketch_dimension=sketch_size,
                                                     sketch_type=sketch_method,
-                                                    number_iterations=1+np.int(np.ceil(np.log(nrows))),
+                                                    number_iterations=10,
                                                     data_rows=rows,data_cols=cols,data_vals=vals,
                                                     random_state=random_seed)
             print("STARTING IHS-LASSO ALGORITHM WITH {}".format(sketch_method), 60*"*")
             #start = default_timer()
-            x_ihs = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : ihs_lasso_bound})
+            x_ihs = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound},all_iterations=True)
             print("Comparing difference between opt and approx:")
             #print(np.linalg.norm(x_opt - x_ihs))
             # print("Approx Solution:")
@@ -196,9 +210,6 @@ class TestSketch(unittest.TestCase):
             # print("Optimum weights:")
             # print(x_opt)
             print("||x^* - x'||_A^2: {}".format((np.linalg.norm(X@(x_opt - x_ihs)**2/X.shape[0]))))
-
-            # test that the constrain bound is met
-            self.assertTrue(np.linalg.norm(x_ihs,1) - ihs_lasso_bound < 0.01)
 
             # Test convergence
             np.testing.assert_array_almost_equal(x_opt, x_ihs, decimal=4)
