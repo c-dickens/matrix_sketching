@@ -1,6 +1,7 @@
 '''Tests the countsketch.py methods'''
 from timeit import default_timer
 import numpy as np
+import scipy as sp
 import pandas as pd
 import unittest
 import sys
@@ -8,21 +9,24 @@ sys.path.append("..")
 import lib
 from lib import Sketch
 from lib import CountSketch
+from lib import iterative_hessian_sketch as ihs
 from scipy.sparse import random
+import quadprog as qp
+import qpsolvers as qps
+import cvxopt as cp
 
 # Methods to test
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
+from sklearn.datasets import make_regression
 from scipy import optimize
-
+from scipy import sparse
+from experiment_parameter_grid import ihs_sketches
 
 
 #################
-random_seed = 10
-np.random.seed(random_seed)
-dir = '..'
-
-rawdata_mat = np.load(dir + '/data/YearPredictionMSD.npy')
+#random_seed = 10
+#np.random.seed(random_seed)
 
 def generate_data(m, n, sigma=5, density=0.2):
     "Generates data matrix X and observations Y."
@@ -39,22 +43,6 @@ def generate_data(m, n, sigma=5, density=0.2):
     #new_y = scaler.transform(Y)
     return new_X, Y, beta_star
 
-# subset_size = 50008
-sketch_size = 1000
-# X = rawdata_mat[:subset_size, 1:11]
-# y = rawdata_mat[:subset_size, 0]
-# y = y[:,None]
-print("generating data")
-X,y,beta = generate_data(10000, 2,5,0.01)
-print("Shape of data: {}".format(rawdata_mat.shape))
-print("Shape of testing data: {}".format(X.shape))
-print("Shape of test vector: {}".format(y.shape))
-repeats = 5
-
-
-
-
-
 def ihs_lasso(x,x0,S_A, ATy,covariance_mat, b, _lambda):
     #print("ATy {} ".format(ATy.shape))
     #ATy = np.ravel(ATy)
@@ -70,126 +58,111 @@ def ihs_lasso(x,x0,S_A, ATy,covariance_mat, b, _lambda):
     #print("Out shape {}".format(output.shape))
     return norm_term - inner_product + regulariser
 
-def iterative_hessian_lasso(data, targets, regulariser,sketch_size, num_iters):
-    '''
-    Original problem is min 0.5*||Ax-b||_2^2 + lambda||x||_1
-    IHS asks us to minimise 0.5*||SAx||_2^2 - <A^Tb, x> over
-    the constraints.
+#### LASSO QP Solvers.
+def cvxopt_lasso(data,targets, constraint):
+    '''solve using cvxopt'''
+    n,d = data.shape
+    Q = data.T@data
+    c = data.T@targets
 
-    Does plugging the constrain into the minimisation term just work?'''
+    # Expand the problem
+    big_Q = np.vstack((np.c_[Q, -1.0*Q], np.c_[-1.0*Q, Q]))
+    big_c = np.concatenate((c,-c))
 
-    A = data
-    y = targets
-    _lambda = regulariser
-    n,d = A.shape
-    x0 = np.zeros(shape=(d,))
-    m = int(sketch_size) #sketching dimension
+    # penalty term
+    constraint_term = constraint*np.ones((2*d,))
+    big_linear_term = constraint_term - big_c
 
-    print("Generating constants")
-    ATy_time = default_timer()
-    ATy = np.ravel(A.T@y)
-    print("ATy time: {}".format(default_timer() - ATy_time))
+    # nonnegative constraints
+    G = -1.0*np.eye(2*d)
+    h = np.zeros((2*d,))
 
-    cov_mat_time = default_timer()
-    covariance_mat = A.T.dot(A)
-    print("Cov mat time: {}".format(default_timer() - cov_mat_time))
-
-    # Measurables
-    summary_time = np.zeros(num_iters)
-    update_time = np.zeros_like(summary_time)
-
-    for n_iter in range(int(num_iters)):
-        #print(n_iter)
-        #print("x0 shape {}".format(x0.shape))
-        all_sketches = np.zeros(shape=(sketch_size,
-                                       A.shape[1],
-                                       num_iters))
+    P = cp.matrix(big_Q)
+    q = cp.matrix(big_linear_term)
+    G = cp.matrix(G)
+    h = cp.matrix(h)
 
 
+    res = cp.solvers.qp(P,q,G,h)
+    w = np.squeeze(np.array(res['x']))
+    w[w < 1E-8] = 0
+    x = w[:d] - w[d:]
+    return(x)
 
-        summary = CountSketch(data=A, sketch_dimension=sketch_size)
+def iterative_lasso(sketch_data, data, targets, x0, penalty):
+    '''solve the lasso through repeated calls to a smaller quadratic program'''
 
-        summary_start = default_timer()
-        sketch = summary.sketch(A)
-        summary_time[n_iter] = default_timer() - summary_start
-        print("Iteration {}, time {}".format(n_iter,summary_time[n_iter]))
+    # Deal with constants
+    n,d = data.shape
+    #Q = data.T@data
+    Q = sketch_data.T@sketch_data
+    c = Q@x0 + data.T@(targets - data@x0)  # data.T@(targets - data@x0)
 
-        update_start = default_timer()
-        x_new = optimize.minimize(ihs_lasso,x0,
-                                  args=(x0, sketch, ATy, covariance_mat, y, _lambda),
-                                  method='BFGS').x
-        update_time[n_iter] = default_timer() - update_start
+    # Expand the problem
+    big_Q = np.vstack((np.c_[Q, -1.0*Q], np.c_[-1.0*Q, Q]))
+    big_c = np.concatenate((c,-c))
+
+    # penalty term
+    constraint_term = penalty*np.ones((2*d,))
+    big_linear_term = constraint_term - big_c
+
+    # nonnegative constraints
+    G = -1.0*np.eye(2*d)
+    h = np.zeros((2*d,))
+
+    P = cp.matrix(big_Q)
+    q = cp.matrix(big_linear_term)
+    G = cp.matrix(G)
+    h = cp.matrix(h)
 
 
-
-
-
-
-        #
-        #start = default_timer()
-        #sketch = summary.sketch(X)
-
-        #S_A = sketch_method(A, sketch_size)
-        #start = default_timer()
-
-        #solve_time = default_timer() - start
-        #print("SOLVE TIME: {}".format(solver_time))
-        #print(x_new)
-        x0 = x_new
-
-    print("MEAN UPDATE TIME IN IHS: {}".format(np.mean(update_time)))
-    print("MEAN SUMMARY TIME IN IHS: {}".format(np.mean(summary_time)))
-    print("TOTAL SUMMARY TIME IN IHS: {}".format(np.sum(summary_time)))
-    return np.ravel(x0)
+    res = cp.solvers.qp(P,q,G,h)
+    w = np.squeeze(np.array(res['x']))
+    #w[w < 1E-8] = 0
+    x = w[:d] - w[d:]
+    return(x)
 
 
 
 def main():
+    rawdata_mat = np.load('../data/Complex.npy')
+
+    n = 50000
+    d = 15
+    X,y,x_star = generate_data(n,d,5)
+    repeats = 1
 
     # solve the lasso problem in sklearn
-    lassoModel = Lasso(alpha=2.0,max_iter=1000)
-    sklearn_X, sklearn_y = X.shape[0]*X, X.shape[0]*y
+    lasso_penalty_term = 5.0
+    lassoModel = Lasso(alpha=lasso_penalty_term ,max_iter=1000)
+    sklearn_X, sklearn_y = np.sqrt(n)*X, np.sqrt(n)*y
     sklearn_time = np.zeros(repeats)
     print("-"*80)
     for rep in range(repeats):
         start = default_timer()
         lassoModel.fit(sklearn_X,sklearn_y)
         sklearn_time[rep] = default_timer() - start
-    print("SKLEARN TIME: {}".format(np.mean(sklearn_time, dtype=np.float64)))
+    # print("SKLEARN TIME: {}".format(np.mean(sklearn_time, dtype=np.float64)))
+    x_opt = lassoModel.coef_
+
+    #print(x_opt)
     print("-"*80)
 
+    x_cvx = cvxopt_lasso(X,y,lasso_penalty_term)
+    print()
+    #np.testing.assert_array_almost_equal(x_cvx, x_opt,5)
 
-    # Sketch the problem and measure time
-    sketch_time = np.zeros_like(sklearn_time)
-    # nb calcs ignore the first iter for start up due to jit in numba
-    for rep in range(repeats):
-        summary = CountSketch(data=X, sketch_dimension=sketch_size)
-        start = default_timer()
-        sketch = summary.sketch(X)
-        sketch_time[rep] = default_timer() - start
-        print("Iteration {}, time {}".format(rep,sketch_time[rep]))
-    print("MEAN SUMMARY TIME ON ({},{},{}): {}".format(X.shape[0], X.shape[1],\
-                                              sketch_size,np.mean(sketch_time[1:])))
-    print("Sketch shape: {}".format(sketch.shape))
-    print("TOTAL SKETCH TIME: {}".format(np.sum(sketch_time[1:])))
+    x0 = np.zeros((d,))
+    for i in range(20):
+        S_X = (1/np.sqrt(10*d))*np.random.randn(10*d,n)@X
+        new_x = iterative_lasso(S_X,X,y,x0,lasso_penalty_term)
+        sol_error = np.log((1/n)*np.linalg.norm(new_x-x_opt)**2)
+        print("Error after {} iters to opt: {}".format(i+1,sol_error))
+        #print(np.c_[new_x[:,None], x_opt[:,None]])
+        x0 = new_x
 
+    print(np.c_[x0[:,None], x_opt[:,None]])
 
-
-    # Now let's try with scipy solver.
-    print("-"*80)
-
-    start = default_timer()
-    x_ihs = iterative_hessian_lasso(X,y, 2.0,2000,20)
-    ihs_time  = default_timer() - start
-    print("IHS TIME: {}".format(ihs_time))
-
-
-    # Comparison to optimal weights
-    print("-"*80)
-    true_weights = lassoModel.coef_
-    print("NORM OF DIFFERENCE: {}".format(np.linalg.norm(X@(true_weights - x_ihs)*(1/X.shape[0]))))
-    print("True coefs: {}".format(lassoModel.coef_))
-    print("Approx coefs: {}".format(x_ihs))
 
 
 if __name__ == "__main__":
