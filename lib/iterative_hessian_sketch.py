@@ -10,50 +10,13 @@ from scipy.sparse import coo_matrix
 from . import Sketch, CountSketch, SRHT, GaussianSketch
 from hadamard import fastwht
 import quadprog as qp
-from timeit import default_timer
+from time import process_time
 from numba import jit
 
 
 
 ############################## SOLVER FUNCTIONS ###############################
 cp.solvers.options['show_progress'] = False
-
-def lasso(A,x,b,regulariser):
-    return np.linalg.norm(A@x-b)**2 - regulariser*np.linalg.norm(x,1)
-
-# def iterative_lasso(sketch_data, data, targets, x0, penalty):
-#     '''solve the lasso through repeated calls to a smaller quadratic program'''
-#
-#     # Deal with constants
-#     n,d = data.shape
-#     #Q = data.T@data
-#     Q = sketch_data.T@sketch_data
-#     c = Q@x0 + data.T@(targets - data@x0)  # data.T@(targets - data@x0)
-#
-#     # Expand the problem
-#     big_Q = np.vstack((np.c_[Q, -1.0*Q], np.c_[-1.0*Q, Q]))
-#     big_c = np.concatenate((c,-c))
-#
-#     # penalty term
-#     constraint_term = penalty*np.ones((2*d,))
-#     big_linear_term = constraint_term - big_c
-#
-#     # nonnegative constraints
-#     G = -1.0*np.eye(2*d)
-#     h = np.zeros((2*d,))
-#
-#     P = cp.matrix(big_Q)
-#     q = cp.matrix(big_linear_term)
-#     G = cp.matrix(G)
-#     h = cp.matrix(h)
-#
-#
-#     res = cp.solvers.qp(P,q,G,h)
-#     w = np.squeeze(np.array(res['x']))
-#     #w[w < 1E-8] = 0
-#     x = w[:d] - w[d:]
-#     return(x)
-
 
 def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x, timing=False):
     '''Solve the iterative version of lasso.  QP constrants adapted from
@@ -86,9 +49,9 @@ def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x, timing=False):
     G = cp.matrix(G)
     h = cp.matrix(h)
 
-    solve_start = default_timer()
+    solve_start = process_time()
     res = cp.solvers.qp(P,q,G,h)
-    solve_time = default_timer() - solve_start
+    solve_time = process_time() - solve_start
 
     w = np.squeeze(np.array(res['x']))
     w[w < 1E-8] = 0
@@ -317,9 +280,9 @@ class IHS(CountSketch, SRHT, GaussianSketch):
                 #print("Testing sketch function {}".format(self.sketch_type))
 
                 if self.sketch_type is "CountSketch":
-                    #sketch_start = default_timer()
+                    #sketch_start = process_time()
                     all_sketches[:,:,iter_num] = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
-                    #sketch_time = default_timer() - sketch_start
+                    #sketch_time = process_time() - sketch_start
                     #all_sketches[:,:,iter_num] = summary
                 elif self.sketch_type is "SRHT":
                     all_sketches[:,:,iter_num] = sketch_function(self.data, self.sketch_dimension)
@@ -433,13 +396,13 @@ class IHS(CountSketch, SRHT, GaussianSketch):
             lasso_bound = constraints['bound']
             print("Lasso bound: {}".format(lasso_bound))
 
-            setup_time_start = default_timer()
+            setup_time_start = process_time()
             A = self.data
             y = self.targets
             x0 = np.zeros(shape=(self.d,))
             m = np.int(self.sketch_dimension)
             ATy = A.T@y
-            setup_time = default_timer() - setup_time_start
+            setup_time = process_time() - setup_time_start
 
 
             old_norm = 1.0
@@ -459,18 +422,18 @@ class IHS(CountSketch, SRHT, GaussianSketch):
                 itr_count = self.number_iterations
                 for n_iter in range(self.number_iterations):
                     if sketch_function is "CountSketch":
-                        sketch_start = default_timer()
+                        sketch_start = process_time()
                         S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
-                        sketch_time += default_timer() - sketch_start
+                        sketch_time += process_time() - sketch_start
                     elif sketch_function is "SRHT":
-                        sketch_start = default_timer()
+                        sketch_start = process_time()
                         S_A = srht_transform1(self.data, self.sketch_dimension)
-                        sketch_time += default_timer() - sketch_start
+                        sketch_time += process_time() - sketch_start
 
                     elif sketch_function is "Gaussian":
-                        sketch_start = default_timer()
+                        sketch_start = process_time()
                         S_A = (1/np.sqrt(self.sketch_dimension))*np.random.randn(self.sketch_dimension,self.n)@self.data
-                        sketch_time += default_timer() - sketch_start
+                        sketch_time += process_time() - sketch_start
 
                     if rank_check:
                         rank = np.linalg.matrix_rank(S_A)
@@ -486,9 +449,9 @@ class IHS(CountSketch, SRHT, GaussianSketch):
                         if sketch_function is "CountSketch":
 
                             # if self.d < 400:
-                            sketch_start = default_timer()
+                            sketch_start = process_time()
                             S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
-                            sketch_time += default_timer() - sketch_start
+                            sketch_time += process_time() - sketch_start
 
                             if rank_check:
                                 rank = np.linalg.matrix_rank(S_A)
@@ -496,13 +459,13 @@ class IHS(CountSketch, SRHT, GaussianSketch):
                                     rank_fails += 1
 
                             # else:
-                            #     sketch_start = default_timer()
+                            #     sketch_start = process_time()
                             #     S_A = countSketch_dense(self.data, self.sketch_dimension)
-                            #     sketch_time += default_timer() - sketch_start
+                            #     sketch_time += process_time() - sketch_start
                         elif sketch_function is "SRHT":
-                            sketch_start = default_timer()
+                            sketch_start = process_time()
                             S_A = srht_transform1(self.data, self.sketch_dimension)
-                            sketch_time += default_timer() - sketch_start
+                            sketch_time += process_time() - sketch_start
 
                             if rank_check:
                                 rank = np.linalg.matrix_rank(S_A)
@@ -558,9 +521,9 @@ class IHS(CountSketch, SRHT, GaussianSketch):
         A = self.data
         y = self.targets
 
-        #setup_time_start = default_timer()
+        #setup_time_start = process_time()
         ATy = self.data.T@self.targets
-        #setup_time = default_timer() - setup_time_start
+        #setup_time = process_time() - setup_time_start
         x0 = np.zeros(shape=(self.data.shape[1],))
 
         # measurable timing vars
@@ -577,13 +540,13 @@ class IHS(CountSketch, SRHT, GaussianSketch):
             else:
                 itr_count += 1
                 if sketch_function is "CountSketch":
-                    #sketch_start = default_timer()
+                    #sketch_start = process_time()
                     S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
-                    #sketch_time += default_timer() - sketch_start #default_timer() - sketch_start
+                    #sketch_time += process_time() - sketch_start #process_time() - sketch_start
                 elif sketch_function is "SRHT":
                     #sketch_start = time.time()
                     S_A = srht_transform1(self.data, self.sketch_dimension)
-                    #sketch_time += time.time() - sketch_start # default_timer() - sketch_start
+                    #sketch_time += time.time() - sketch_start # process_time() - sketch_start
                 #print("Size of sketch: {}".format(S_A.shape))
                 # x_out, end_opt_time = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0, timing=True)
                 x_out = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0)
