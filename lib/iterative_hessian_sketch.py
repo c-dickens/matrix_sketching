@@ -16,47 +16,48 @@ from numba import jit
 
 
 ############################## SOLVER FUNCTIONS ###############################
+cp.solvers.options['show_progress'] = False
 
 def lasso(A,x,b,regulariser):
     return np.linalg.norm(A@x-b)**2 - regulariser*np.linalg.norm(x,1)
 
-def iterative_lasso(sketch_data, data, targets, x0, penalty):
-    '''solve the lasso through repeated calls to a smaller quadratic program'''
-
-    # Deal with constants
-    n,d = data.shape
-    #Q = data.T@data
-    Q = sketch_data.T@sketch_data
-    c = Q@x0 + data.T@(targets - data@x0)  # data.T@(targets - data@x0)
-
-    # Expand the problem
-    big_Q = np.vstack((np.c_[Q, -1.0*Q], np.c_[-1.0*Q, Q]))
-    big_c = np.concatenate((c,-c))
-
-    # penalty term
-    constraint_term = penalty*np.ones((2*d,))
-    big_linear_term = constraint_term - big_c
-
-    # nonnegative constraints
-    G = -1.0*np.eye(2*d)
-    h = np.zeros((2*d,))
-
-    P = cp.matrix(big_Q)
-    q = cp.matrix(big_linear_term)
-    G = cp.matrix(G)
-    h = cp.matrix(h)
-
-
-    res = cp.solvers.qp(P,q,G,h)
-    w = np.squeeze(np.array(res['x']))
-    #w[w < 1E-8] = 0
-    x = w[:d] - w[d:]
-    return(x)
+# def iterative_lasso(sketch_data, data, targets, x0, penalty):
+#     '''solve the lasso through repeated calls to a smaller quadratic program'''
+#
+#     # Deal with constants
+#     n,d = data.shape
+#     #Q = data.T@data
+#     Q = sketch_data.T@sketch_data
+#     c = Q@x0 + data.T@(targets - data@x0)  # data.T@(targets - data@x0)
+#
+#     # Expand the problem
+#     big_Q = np.vstack((np.c_[Q, -1.0*Q], np.c_[-1.0*Q, Q]))
+#     big_c = np.concatenate((c,-c))
+#
+#     # penalty term
+#     constraint_term = penalty*np.ones((2*d,))
+#     big_linear_term = constraint_term - big_c
+#
+#     # nonnegative constraints
+#     G = -1.0*np.eye(2*d)
+#     h = np.zeros((2*d,))
+#
+#     P = cp.matrix(big_Q)
+#     q = cp.matrix(big_linear_term)
+#     G = cp.matrix(G)
+#     h = cp.matrix(h)
+#
+#
+#     res = cp.solvers.qp(P,q,G,h)
+#     w = np.squeeze(np.array(res['x']))
+#     #w[w < 1E-8] = 0
+#     x = w[:d] - w[d:]
+#     return(x)
 
 
 def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x, timing=False):
     '''Solve the iterative version of lasso.  QP constrants adapted from
-    https://stats.stackexchange.com/questions/119795/quadratic-programming-and-lasso
+    https://arxiv.org/pdf/1611.01511.pdf
 
     if timing
     return result - the optimization output
@@ -67,7 +68,7 @@ def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x, timing=False):
     # Expand the problem
     n,d = data.shape
     Q = sketch.T@sketch
-    big_Q = np.vstack((np.c_[Q, -1.0*Q], np.c_[-1.0*Q, Q]))
+    big_Q = np.vstack((np.c_[Q, -1.0*Q], np.c_[-1.0*Q, Q])) #+ 1E-5*np.eye(2*d)
 
     linear_term = Q@old_x + ATy - data.T@(data@old_x)
     big_c = np.concatenate((linear_term,-linear_term))
@@ -96,7 +97,7 @@ def ihs_lasso_solver(sketch, ATy, data, regulariser, old_x, timing=False):
     if timing:
         return x, solve_time
     else:
-        return result
+        return x
     return x
 
 
@@ -263,7 +264,7 @@ class IHS(CountSketch, SRHT, GaussianSketch):
             self.nonzero_cols = X_coo.col
             self.nonzero_data = X_coo.data
         else:
-            print("Already in coo format")
+            #print("Already in coo format")
             self.nonzero_rows = data_rows
             self.nonzero_cols = data_cols
             self.nonzero_data = data_vals
@@ -458,33 +459,25 @@ class IHS(CountSketch, SRHT, GaussianSketch):
                 itr_count = self.number_iterations
                 for n_iter in range(self.number_iterations):
                     if sketch_function is "CountSketch":
-
-                        # if self.d < 400:
                         sketch_start = default_timer()
                         S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
                         sketch_time += default_timer() - sketch_start
-
-                        if rank_check:
-                            rank = np.linalg.matrix_rank(S_A)
-                            if rank != self.rank:
-                                rank_fails += 1
-
-                        # else:
-                        #     sketch_start = default_timer()
-                        #     S_A = countSketch_dense(self.data, self.sketch_dimension)
-                        #     sketch_time += default_timer() - sketch_start
                     elif sketch_function is "SRHT":
                         sketch_start = default_timer()
                         S_A = srht_transform1(self.data, self.sketch_dimension)
                         sketch_time += default_timer() - sketch_start
 
-                        if rank_check:
-                            rank = np.linalg.matrix_rank(S_A)
-                            if rank != self.rank:
-                                rank_fails += 1
-                    # x_out, end_opt_time = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0, timing=True)
+                    elif sketch_function is "Gaussian":
+                        sketch_start = default_timer()
+                        S_A = (1/np.sqrt(self.sketch_dimension))*np.random.randn(self.sketch_dimension,self.n)@self.data
+                        sketch_time += default_timer() - sketch_start
+
+                    if rank_check:
+                        rank = np.linalg.matrix_rank(S_A)
+                        if rank != self.rank:
+                            rank_fails += 1
+
                     x_out = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0)
-                    opt_time += end_opt_time
                     x0 = x_out
             else:
                 for n_iter in range(self.number_iterations):
@@ -516,15 +509,15 @@ class IHS(CountSketch, SRHT, GaussianSketch):
                                 if rank != self.rank:
                                     rank_fails += 1
 
-                        # x_out, end_opt_time = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0, timing=True)
-                        x_out = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0)
+                        x_out, end_opt_time = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0, timing=True)
+                        #x_out = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0)
 
                         opt_time += end_opt_time
 
-                        x0 += x_out
-                        new_norm = np.linalg.norm(x0,ord=2)**2
-                        norm_diff = np.abs(new_norm - old_norm)/old_norm
-                        old_norm = new_norm
+                        x0 = x_out
+                        # new_norm = np.linalg.norm(x0,ord=2)**2
+                        # norm_diff = np.abs(new_norm - old_norm)/old_norm
+                        # old_norm = new_norm
         if timing is True:
             #print("returning time")
             if rank_check is True:
@@ -564,13 +557,16 @@ class IHS(CountSketch, SRHT, GaussianSketch):
 
         A = self.data
         y = self.targets
+
+        #setup_time_start = default_timer()
         ATy = self.data.T@self.targets
+        #setup_time = default_timer() - setup_time_start
         x0 = np.zeros(shape=(self.data.shape[1],))
 
         # measurable timing vars
         opt_time = 0
         sketch_time = 0
-        total_time = 0
+        #total_time = setup_time
 
 
         endTime = datetime.datetime.now() + datetime.timedelta(seconds=time_to_run)
@@ -581,18 +577,19 @@ class IHS(CountSketch, SRHT, GaussianSketch):
             else:
                 itr_count += 1
                 if sketch_function is "CountSketch":
-                    sketch_start = time.time() #default_timer()
+                    #sketch_start = default_timer()
                     S_A = _countSketch_fast(self.nonzero_rows,self.nonzero_cols,self.nonzero_data, self.n, self.d, self.sketch_dimension)
-                    sketch_time += time.time() - sketch_start #default_timer() - sketch_start
+                    #sketch_time += default_timer() - sketch_start #default_timer() - sketch_start
                 elif sketch_function is "SRHT":
-                    sketch_start = time.time()
+                    #sketch_start = time.time()
                     S_A = srht_transform1(self.data, self.sketch_dimension)
-                    sketch_time += time.time() - sketch_start # default_timer() - sketch_start
-                print("Size of sketch: {}".format(S_A.shape))
+                    #sketch_time += time.time() - sketch_start # default_timer() - sketch_start
+                #print("Size of sketch: {}".format(S_A.shape))
                 # x_out, end_opt_time = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0, timing=True)
                 x_out = ihs_lasso_solver(S_A, ATy, A, lasso_bound, x0)
                 #opt_time += end_opt_time
-                x0 += x_out
-                total_time += sketch_time + opt_time
-        print("TOTAL TIME IN SKETCH AND OPT: {}".format(total_time))
+                x0 = x_out
+
+                #total_time += sketch_time + opt_time
+        #print("TOTAL TIME IN SKETCH AND OPT: {}".format(total_time))
         return x0, itr_count
