@@ -1,5 +1,140 @@
 %!TEX root = sketching-convex-ols.tex
 
+\textbf{Synthetic Data.}
+\textit{Experimental Setup.}
+For the purposes of this section we assume that data and targets are chosen
+from the Gaussian design with unit covariance as described in Section
+\ref{sec: why-ihs}.
+We fix a positive $\lambda \in \R$ and use this to define an instance of LASSO
+regression $x_{OPT} = \argmin_{x \in \R^d} 0.5 \|Ax - b\|_2^2 + \lambda \|x\|_1$.
+Each iteration reduces the problem to a smaller instance of the problem which
+is solved by quadratic programming using a method similar to \cite{gaines2018algorithms}.
+We carry out two experiments: the first compares the (various metrics of) error
+as the number of iterations is increased and the second measures the error
+when the IHS model is run for a fixed amount of time.
+Section
+\ref{sec: subspace-embedding-results} showed that the CountSketch was roughly
+an order of magnitude faster to compute but the compromise to be made was that
+the embedding was less stable at retaining rank than the SRHT.
+In this section we question (1) do we lose out by using an embedding which
+preserves $\|Ax\|_2^2$ with slightly less fidelity?
+(2) Upon understanding (1), how is this reflected in the run time of the
+IHS model, in particular, how does the size of the sketch affect running time
+and convergence of the IHS model?
+(3) How do the methods scale as the data size is increased?
+
+
+
+
+
+
+\noindent
+\textbf{Error vs Number of Iterations.}
+Results are plotted for the approximation $\hat{x}$ of an optimal solution $x_{OPT}$
+to the lasso regression problem in Figure \ref{fig: ihs-lasso-error-2-opt}
+The number of iterations has been varied from 4 to 16 and the mean solution error measured
+over 5 independent runs of the IHS algorithm.
+Each of the Gaussian, SRHT, and CountSketch was tested using sketch dimensions
+of $m=4d, 6d, 8d$.
+All three settings of $m$ exhibit similar behaviour across the three sketch
+methods and the errors for each appear to be within a constant factor of
+one another.
+The largest difference in error is when $m=4d$ with the SRHT giving the best
+approximation, but for each of the other settings the error converges to the
+same point after 16 iterations, albeit with sharper decay with a larger sketch.
+Despite the small changes in the solution error continuing up to 16 iterations,
+Figure \ref{fig: ihs-lasso-error-2-truth} suggests that continuing beyond 12
+iterations is only reducing the
+error to the optimal approximation of the model (wrt the ground truth weights)
+by a negligible amount.
+
+\begin{figure}
+        \centering
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{time_error_ihs_results/verify_ihs_error_to_opt}
+            \caption{$n=50000$}
+            \label{fig: ihs-lasso-error-2-opt}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.475\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{time_error_ihs_results/verify_ihs_error_to_truth}
+            \caption{$n=100000$}
+            \label{fig: ihs-lasso-error-2-truth}
+        \end{subfigure}
+        \caption{nb finalise Fig 2b and remove on of the legends.}
+        \label{fig: ihs-lasso-opt-truth}
+\end{figure}
+
+
+
+\noindent
+\textbf{Wall Clock Time Complexity}
+\textit{Experimental Setup.}
+Only considering the number of iterations required to converge does not
+emphasise the benefit of using the CountSketch embedding.
+To elicit this computational boon we run the IHS model for a fixed period of
+time ranging from 0.0005 seconds to 0.2 seconds and measure the accuracy of
+the solution approximation.
+Results are given in Figure \ref{fig: ihs-lasso-time-comparison} with
+$n=50,000$ and $d=10$.
+We tested 10 independent runs of the
+algorithm each with a random permutation of the dataset and plotted the means.
+In Figure \ref{table: real-data-subspace-embedding} we observed that using a
+larger embedding dimension $m$ generally required more time but with the benefit
+of obtaining a more accurate approximation.
+Additionally, in Figure \ref{fig: summary-time-50000}, we also see the CountSketch
+return an embedding an order of magnitude faster.
+Here, in Figure \ref{fig: ihs-lasso-error-time}, we begin to see the benefits of
+using the CountSketch come to fruition as we can compute an embedding so quickly
+that
+descent towards the optimum occurs before even one iteration of using the
+SRHT can be carried out!
+Although each iteration is `lower quality' when using the CountSketch (as seen
+in Figure \ref{fig: ihs-lasso-opt-truth}) because they are so \textit{cheap}
+in comparison the scheme can quickly approximate the solution.
+Additionally, we also observe an interesting tradeoff that was not apparent when
+considering only the number of iterations for convergence or the time cost of
+computing an embedding: Figure \ref{fig: ihs-lasso-error-time} explicitly shows
+a tradeoff between the selected embedding dimension and the time to converge.
+Despite the embedding at $m=5d$ being cheaper to find, an embedding which is
+slightly slower to find but is more accurate results in a faster run time overall.
+Again, this is made apparent in Figure \ref{fig: ihs-lasso-iters-time} where
+it is shown that the number of iterations using the CountSketch embedding
+increases \textit{linearly} with the allotted time and there is negligible
+difference between the number of iterations used at either $m=5d$ or $m=10d$;
+the number of iterations required for the SRHT is also linear, albeit with a
+\textit{significantly} reduced constant.
+
+
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.475\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{time_error_ihs_results/error_time_50000_10}
+        \caption{$n=50000$}
+        \label{fig: ihs-lasso-error-time}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{time_error_ihs_results/num_iters_time_50000_10}
+        \caption{$n=100000$}
+        \label{fig: ihs-lasso-iters-time}
+    \end{subfigure}
+    \caption{Error and Number of iterations compared to time.
+              nb. change time setup to get smoother curves and test
+              on different dimensionality datsets as well.
+              Include Gaussian for comparison.
+              Second figure is not log time.}
+    \label{fig: ihs-lasso-time-comparison}
+\end{figure}
+
+
+\textbf{TBC.}
+
 In this experiment we compare how the sparse projection methods compare with
 other sketches in recovering the solution to a popular constrained regression
 problem, the LASSO.
@@ -10,6 +145,50 @@ The synthetic experiments also show parameter ranges for which the IHS method
 is favourable in comparison to the exact method as well as highlighting, again,
 the suboptimality of the sketch-and-solve model.
 
+We generated a random regression instance as follows: the density of the data
+was fixed at 10\%, ground truth weights $x^*$
+and a design matrix $A \in \R^{n \times d}$ were generated each from a standard
+normal distribution.
+Uniformly at random, roughly 20\% of the entries in $w^*$ were chosen uniformly
+at random to be set to zero.
+Finally, we added Gaussian noise with unit variance to create the response values
+$b = Ax + \omega$.
+This dataset remained fixed and 5 trials of the sketching models were instantiated
+with either the CountSketch or SRHT sketching methods.
+We used $\log_{10}(n)$ iterations with a projection dimension $m = 2d$
+To compare the performance of our implementations we solve the above model using
+the \texttt{sklearn.linear\_model.Lasso} with a regularization parameter of 1 to
+generate $x_{OPT}$.
+Although we cannot exploit the penalised form of LASSO in our sketching models,
+we took $R = \|x\|_1$ and used this as the $\ell_1$ norm constraint for each
+of the QPs which the models are required to solve.
+We report the means of solution error, cost function error, and time taken to
+compute the optimisation.
+
+\noindent\textbf{Time Complexity compared to dimensionality.}
+The LASSO method scales as $O(nd^2)$ using the sklearn implementation of the ...
+algorithm.
+In comparison, the IHS method requires the time taken to compute $N$ sketches at
+a cost of $T_{\text{sketch}}$ each, and $T_{\text{opt}}$ for every iteration.
+A clear drawback of the IHS method is that for every iteration one needs to solve
+a quadratic program in $d$ parameters so in the worst case costs $T_{\text{opt}}
+= O(d^3)$ per iteration update.
+As such, we need to understand how prohibitive this scaling is, and if so,
+where exactly the IHS model is favourable compared to the exact method.
+This behaviour is explored in Figure \ref{fig: lasso-synthetic} where each
+sub-figure is the same experiment but with different $n$.
+The experimental setup is to fix an $n \in \{ 50000, 100000, 200000, 400000 \}$
+and then generate a dataset under the gaussian design with unit variance and
+various $d$ from $10$ to roughly $300$.
+Sketch sizes of $m = 2d$ were used throughout.
+The density of the data was fixed at $\rho = 0.05$, the number of iterations was
+fixed exactly at $\lceil \log_{10}(n) \rceil$ and the experiments were repeated 5 times (the
+means have been plotted).
+The combined time of sketch time and solve times have been plotted and
+as expected, in each of the subfigures, there is a point beyond which the IHS
+is slower than the exact method; shown by the dashed lines, this is due to the
+cubic scaling of the quadratic programming rather than the sketching time which
+increases only mildly as $d$ is increased.
 
 \begin{figure}
         \centering
@@ -45,27 +224,15 @@ the suboptimality of the sketch-and-solve model.
         \label{fig: lasso-synthetic}
     \end{figure}
 
-\noindent\textbf{Time Complexity compared to dimensionality.}
-The LASSO method scales as $O(nd^2)$ using the sklearn implementation of the ...
-algorithm.
-In comparison, the IHS method requires the time taken to compute $N$ sketches at
-a cost of $T_{\text{sketch}}$ each, and $T_{\text{opt}}$ for every iteration.
-A clear drawback of the IHS method is that for every iteration one needs to solve
-a quadratic program in $d$ parameters so in the worst case costs $T_{\text{opt}}
-= O(d^3)$ per iteration update.
-As such, we need to understand how prohibitive this scaling is, and if so,
-where exactly the IHS model is favourable compared to the exact method.
-This behaviour is explored in Figure \ref{fig: lasso-synthetic} where each
-sub-figure is the same experiment but with different $n$.
-The experimental setup is to fix an $n \in \{ 50000, 100000, 200000, 400000 \}$
-and then generate a dataset under the gaussian design with unit variance and
-various $d$ from $10$ to roughly $300$.
-Sketch sizes of $m = 2d$ were used throughout.
-The density of the data was fixed at $\rho = 0.05$, the number of iterations was
-fixed exactly at $\lceil \log_{10}(n) \rceil$ and the experiments were repeated 5 times (the
-means have been plotted).
-The combined time of sketch time and solve times have been plotted and
-as expected, in each of the subfigures, there is a point beyond which the IHS
-is slower than the exact method; shown by the dashed lines, this is due to the
-cubic scaling of the quadratic programming rather than the sketching time which
-increases only mildly as $d$ is increased.
+
+\textbf{Real Datasets.}
+
+\textit{Experimental setup.}
+We carry out two experiments on the real datasets.
+The first is to see how the number of iterations affects both the solution error,
+the MSE, and the prediction error in both the IHS and sketch-and-solve models.
+The second experiment compares the time cost of running the approximation
+algorithms compared to that of sklearn for a fixed number of iterations with
+a comparison of the error metrics.
+In each experiment we separate the data into a train and test set of size 70\%
+and 30\%, respectively.

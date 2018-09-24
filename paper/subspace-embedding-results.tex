@@ -8,12 +8,27 @@ In this section, we perform empirical studies to answer three central
 questions:
 (1) time cost: does the sketching approach provide speed-ups in
 practice;
-(2) accuracy: how large does the projection dimenions need to be in
+(2) accuracy: how large does the projection dimension need to be in
 order to achieve small error;
 (3) subspace embedding:
 according to the theoretical analysis, the CountSketch requires a
 higher projected dimension than other sketch methods to obtain a
-subspace embedding -- but is this borne out in practice? 
+subspace embedding -- but is this borne out in practice?
+To address these three questions, we need to understand the constants inside
+the $O(\cdot)$ terms required for a subspace embedding as described in Table
+\ref{table: sketch-facts}.
+Although a subspace embedding is sufficient to ensure convergence to the optimum,
+in Section \ref{sec: ihs-rank-deficient} we will explore whether the solution can be learnt using
+sketches which are as small as possible and may hence be rank deficient:
+thus we need to explore when rank is preserved or lost.
+We introduce the following definition which allows us to formally compare sketches
+of a given projection dimension:
+
+\begin{mydef} \label{def: sampling-factor}
+The \textit{sampling factor} is the value $\gamma$ such that $m = \gamma d$
+is the projection dimension for a random projection $SA \in R^{m \times d}$
+of a matrix $A$.
+\end{mydef}
 
 \eat{
 As outlined in Section \ref{sec: preliminaries} the key quantity that we would
@@ -31,8 +46,8 @@ are large and sparse.
 We immediately remove the (dense) Gaussian sketch from consideration,
 since the time cost for explicit matrix multiplication is excessively
 high even for moderately sized inputs.
-We subsequently focus our attention on CountSketch and \SRHT. 
-To construct a subspace embedding, 
+We subsequently focus our attention on CountSketch and \SRHT.
+To construct a subspace embedding,
 the CountSketch takes
 time $O(\nnz{A})$, while the \SRHT requires $O(nd \log n)$.
 That is, CountSketch explicitly scales (linearly) with the sparsity of
@@ -40,7 +55,7 @@ the data, whereas \SRHT, while fast, does not directly depend on the
 sparsity.
 We expect CountSketch to be preferable for very sparse data,
 and investigate whether there is a point where the input density is
-such that \SRHT is faster. 
+such that \SRHT is faster.
 
 \noindent
 \textit{Experimental setup.}
@@ -49,17 +64,17 @@ in $\{ 10, 100, 1000, 5000 \}$.
 That is, the aspect ratio varies from $2 \times 10^{-4}$ to $1\times
 10^{-1}$.
 This is consistent with the range observed for the real data sets studied (see
-Table \ref{table: data-facts}). 
+Table \ref{table: data-facts}).
 We varied the \textit{density} of the synthetic data.
 We define density $\rho$ simply as the fraction of entries in the matrix $A$
 that are non-zero.
 We used the \texttt{scipy.sparse.random} routine to instantiate $A$,
-where non-zero entries are chosen iid normal. 
+where non-zero entries are chosen iid normal.
 Note that the speed of our sketching methods does not depend on the data
 distribution, so we are not overly concerned with this choice for
-these timing experiments. 
+these timing experiments.
 We initially choose the projection dimension $m = 5d$; this parameter
-is investigated in more detail in subsequent sections. 
+is investigated in more detail in subsequent sections.
 
 \noindent
 \textit{Timing results.}
@@ -70,29 +85,29 @@ There is an increasing
 trend for the time to build the CountSketch as the density of the data
 increases.
 Meanwhile, the time for the \SRHT embedding remains stable across
-density values. 
+density values.
 %
 However, our main take-away from this experiment is that CountSketch
-is \textit{an order of magnitude faster}, even in the densest regime. 
+is \textit{an order of magnitude faster}, even in the densest regime.
 In particular, we do not observe any cross over point where the \SRHT
 embedding is faster to build than CountSketch for a given input
-dimensionality. 
+dimensionality.
 We saw the same property for varying values of $n$, so we do not
-report them. 
+report them.
 Similar behavior is also seen on real datasets (Table
 \ref{table: real-data-subspace-embedding}), where CountSketch is
 uniformly faster than \SRHT, sometimes by multiple orders of
 magnitude.
 This is most pronounced for the ``tall-and-skinny'' (i.e. low aspect
-ratio) data sets. 
+ratio) data sets.
 In absolute terms, the time cost to build the CountSketch is below one
-second in all but the largest data sets. 
+second in all but the largest data sets.
 Note that in a few experiments with large values of $d$ ($d>1000$),
 the \SRHT failed to complete, and so results for these tests are
-omitted. 
+omitted.
 The limiting factor appears to be the computation of Hadamard
 transforms: these are individually relatively fast, but in aggregate create a
-pinch point. 
+pinch point.
 
 
 \begin{figure}
@@ -204,17 +219,24 @@ aspect ratios.}
 % -----------------------------------------------------------------------------
 
 \medskip
-\noindent\textbf{Error and Embedding Dimension}
+\noindent\textbf{Error and Embedding Dimension.}
+\eat{
 Although the theory shows that obtaining a subspace embedding is
-sufficient property to instantiate the IHS scheme,
+a sufficient property to instantiate the IHS scheme,
 the analysis does not reveal how big the \textit{sampling factor}
 $\gamma$ must be relative to $d$ in order to ensure a subspace
-embedding is obtained.
+embedding.
 That is, we seek to empirically determine constants that are otherwise
-hidden within the $O(\cdot)$ notation. 
-We study when the $SA$ matrix achieves full rank, as we vary input
-parameters such as the aspect ratio of the matrix $A$. 
+hidden within the $O(\cdot)$ notation.
+}
+We study when the sketch $SA$ achieves full rank by varying the sampling factor
+and measuring both distortion and rank.
+Additionally, we vary input
+parameters such as the aspect ratio of the matrix $A$ to observe the affect this
+has on obtaining a subspace embedding.
 
+
+\noindent
 \textit{Experimental Setup.}
 We carry out this experiment on synthetic data where we can easily
 vary aspect ratio, and then confirm our findings on the real
@@ -223,113 +245,18 @@ For this set of experiments we fix $n$ and then generate a selection of matrices
 of full density
 ranging from `tall-and-skinny' to `fat' matrices by choosing $d$ to vary
 from roughly $0.05n$ to $0.5n$ over different distributions.
-The empirical value of $\eps$ can be measured: this is referred to as the
-\textit{distortion} and is the error induced by the approximate matrix product
-computation $\|A^T A - A^T S^T S A \|_F/\|A^TA\|_F$.
+The empirical value of $\eps$ can be computed: this is referred to as the
+\textit{distortion} and is measured by the error induced by the approximate matrix product
+computation, as $\|A^T A - A^T S^T S A \|_F/\|A^TA\|_F$.
 Results on the distortion for input matrices $A$ whose entries chosen iid normal are given
 in Figure \ref{fig: distortion-sampling-factor}.
 Each experiment is repeated 10 times, and the mean distortion reported.
 We also measured the rank of the returned matrix $SA$, and discuss
 when it is not preserved (i.e. $S$ does not provide a subspace
-embedding). 
-
-\textit{Accuracy and Dimensionality Results.}
-The plots indicate that in general, the distortion induced by the CountSketch is
-comparable with the Gaussian sketches however both are a constant factor worse
-than the SRHT across each of the settings for this distribution.
-In addition, the SRHT and Gaussian sketches retain rank in every instantiation
-of the experiment yet this is not the case for the CountSketch which retains
-rank in all but one (Figures \ref{fig: subspace-125e3-aspectratio} and \ref{fig: subspace-375e1-aspectratio} but at the lowest
-sampling factor) of the trials when the aspect ratio is 0.125 or 0.25.
-When the aspect ratio exceeds 0.25 we begin to see more rank deficiency for
-lower sampling factors and as such require $\gamma > 1.10$ for a CountSketch
-subspce embedding but only $\gamma = 1.01$ for SRHT/Gaussian subspace embeddings as
-seen in Figure \ref{fig: subspace-375e1-aspectratio}.
-This behaviour is exacerbated in the `fat' case, Figure \ref{fig: subspace-5e1-aspectratio},
-when $d/n = 0.5$ under which the CountSketch \textit{never} returns a subspace
-embedding but both of the other methods are stable in this regime.
+embedding).
 
 
-The CountSketch achieves comparable distortion to the other methods and constructs
-an embedding in vastly less time, however, there is a price to pay for this
-computational benefit.
-As the aspect ratio increases the number of rank deficient embeddings also
-grows; taking $\gamma > 1.05$ is sufficient to ensure that rank is preserved
-when $d/n=0.25$ yet the required sampling factor grows considerably with $d/n$.
-When $d/n=0.375$ we need roughly $\gamma = 1.125$ for all of the embeddings to
-preserve rank for the CountSketch but when $d/n = 0.5$ \textit{none} of the
-tested sampling factors up to $\gamma=1.25$ returned a subspace embedding.
-This failure of the CountSketch to accurately preserve rank at higher aspect
-ratios highlights one deficiency it possesses compared to the other sketches.
-Put simply, \textit{CountSketch is more sensitive to higher aspect ratios and
-requires a higher sampling factor in this regime compared to the other
-sketching methods.}
-However, given that the sketches are designed for particularly tall and skinny
-matrices, one could argue that CountSketch failing above $d/n = 0.375$ is in
-fact not problematic: on all the test instances which fall into the tall-and-
-skinny setup, CountSketch retains rank with comparable distortion.
-
-On real datasets we see similar behaviour in that the CountSketch performs well
-when the aspect ratio is particularly small but the performance of rank
-retention deteriorates as the aspect ratio increases.
-For all but the highest aspect ratio datasets there exists a $\gamma$ such that for any
-other $\gamma' > \gamma$ tested, a subspace embedding was returned for $\gamma$
-and $\gamma'$.
-However, on such high aspect ratio data (Slice ($d/n = 7 \times 10^{-3}$),
- Complex ($d/n=1.2 \times 10^{-1}$),and w1a ($d/n = 1.2 \times 10^{-1}$)) neither
- method performs particularly well with respect to returning a subspace embedding.
-We further remark that on tall-and-skinny datasets CountSketch seems to return an
-embedding at the same sampling factor as the SRHT with distortion that differs
-by at most a small factor of $10^{-2}$ in the worst case (California Housing,
-w3a), but more often on the order of $10^{-3}$.
-One can see the progression of the rank retention through analysing the w$n$a
- datasets; neither method returns a full rank embedding for w$1$a at or above
- a particular sampling factor.
- Although both methods return a full rank embedding for w$3$a at $\gamma=5$,
- the w$4$a data requires $\gamma = 5$ for the CountSketch and $\gamma = 1$
- for the SRHT: this is the largest disparity between the two methods and occurs
- at $d/n = 4.1 \times 10^{-2}$.
- Despite the linear dependence on $\delta$ failure probability for a CountSketch
- subspace embedding compared to the $\log(1/\delta)$ of the other methods,
- the largest aspect ratio for which the CountSketch behaves almost identically
- to the SRHT is $d/n = 3 \times 10^{-2}$: less than this and we see only small
- differences in the distortion of the embedding.
- As a result, given the added benefit of a huge time saving, in the regime when
- $d/n < 3 \times 10^{-2}$, the CountSketch seems favourable for a subspace
- embedding becasuse it is fast and rank is retained at low sampling factors.
- If one were \textit{solely} interested in a subspace embedding but had
- slightly `fatter' data, along with less time constraints, then the SRHT is
- favourable.
- In spite of this, in the iterative framework a rank-deficient `embedding' might
- suffice providing that any lost directions in one iteration are picked up at
- later iterations.
- From this perspective, it appears that the CountSketch is favourable irrespective
- of the dimensionality because it is much faster and has comparable distortion
- to the SRHT even when rank is lost.
-
-\medskip
-\textbf{Summary.}
- We conclude the section by referring to the questions asked originally of the
- embedding behaviour.
- First we observed that the CountSketch embedding scaled with the density of the
- data but this growth was mild enough that for all aspect ratios tested it was
- a factor of 10 faster than the SRHT (which also scaled consistently with the
- theory).
- Secondly, for a variety of real datasets we have given a rough guide of how
- large the sampling factor $\gamma$ must be to ensure a subspace embedding is
- returned and shown examples when a `small' sampling factor is not sufficient.
- Finally, on the data we have tested, we have shown that there are examples
- when the CountSketch requires a larger embedding dimension to obtain a subspace
- embedding compared to the SRHT, however, this is only a small constant factor
- larger for the CountSketch despite the theory suggesting a factor $d$ larger.
- In addition, we have also shown empirically that there is a threshold below
- which the performance of the CountSketch is almost identical (in that rank is
- preserved and distortion is only a small constant factor different) to the SRHT
- but is vastly cheaper to compute.
-
-
-
-\begin{figure}
+\begin{figure}[t]
         \centering
         \begin{subfigure}[b]{0.475\textwidth}
             \centering
@@ -366,3 +293,163 @@ One can see the progression of the rank retention through analysing the w$n$a
         \textit{never} returned a full rank subspace embedding.}
         \label{fig: distortion-sampling-factor}
     \end{figure}
+
+    \begin{figure}[t]
+            \centering
+            \begin{subfigure}[b]{0.475\textwidth}
+                \centering
+                \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_exponential_2048_256.pdf}
+                \caption{$d=256$}
+                \label{fig: exp-subspace-125e3-aspectratio}
+            \end{subfigure}
+            \hfill
+            \begin{subfigure}[b]{0.475\textwidth}
+                \centering
+                \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_exponential_2048_512.pdf}
+                \caption{$d=512$}
+                \label{fig: exp-subspace-375e1-aspectratio}
+            \end{subfigure}
+            \vskip\baselineskip
+            \begin{subfigure}[b]{0.475\textwidth}
+                \centering
+                \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_exponential_2048_768.pdf}
+                \caption{$d=768$}
+                \label{fig: exp-subspace-25e1-aspectratio}
+            \end{subfigure}
+            \quad
+            \begin{subfigure}[b]{0.475\textwidth}
+                \centering
+                \includegraphics[width=\textwidth]{subspace_embedding_results/subspace_embedding_dimension_exponential_2048_1024.pdf}
+                \caption{$d=1024$}
+                \label{fig: exp-subspace-5e1-aspectratio}
+            \end{subfigure}
+            \caption{
+            Same setup as in Figure \ref{fig: distortion-sampling-factor} but
+            data chosen iid from a standard Exponential distribution.
+            Although the behaviour is more erratic than for the Gaussian distribution
+            the general picture is similar, with the CountSketch performing
+            similarly to the Gaussian sketch.
+            The \SRHT appears to perform a constant factor better than both other
+            methods.
+            We also see similar rank loss as before,
+            albeit with slightly better performance when $d/n = 0.25, 0.5$ compared
+            to Figure \ref{fig: distortion-sampling-factor}.}
+            \label{fig: exp-distortion-sampling-factor}
+        \end{figure}
+
+
+\noindent
+\textit{Accuracy and Dimensionality Results: synthetic data.}
+The collection of results are shown in Figures \ref{fig: distortion-sampling-factor}.
+These plots indicate that, in general, the distortion induced by the CountSketch is
+comparable with the Gaussian sketches.
+However, both are a constant factor worse
+than the \SRHT across each of the settings for this distribution.
+In addition, the \SRHT and Gaussian sketches preserve the rank in
+every instance.
+However, this property is not observed when using the CountSketch.
+In the small aspect ratio cases (i.e. Figures \ref{fig: subspace-125e3-aspectratio}
+and \ref{fig: subspace-375e1-aspectratio}) a subspace embedding in all cases
+except for the smallest sampling factor.
+In contrast, when the aspect ratio exceeds 0.25, we see more rank deficiency for
+lower sampling factors.
+Here, we require $\gamma > 1.10$ to ensure CountSketch gives a
+subspace embedding, but only $\gamma = 1.01$ for SRHT/Gaussian
+sketches (Figure \ref{fig: subspace-375e1-aspectratio}).
+This behaviour is exacerbated in the `fattest' case of $d/n = 0.5$
+(Figure \ref{fig: subspace-5e1-aspectratio}),
+when the CountSketch \textit{never} gives a subspace
+embedding, while the other methods do.
+
+Despite less reliably returing a subspace embedding,
+the CountSketch achieves comparable distortion to the other methods and constructs
+the sketch in vastly less time.
+There is nevertheless a price to pay for this
+computational speedup.
+As the aspect ratio increases, the number of rank deficient embeddings also
+grows; taking $\gamma > 1.05$ is sufficient to ensure that rank is preserved
+when $d/n=0.25$ yet the required sampling factor grows considerably with $d/n$.
+When $d/n=0.375$ we need roughly $\gamma = 1.125$ for all of the embeddings to
+preserve rank for the CountSketch but when $d/n = 0.5$ \textit{none} of the
+tested sampling factors up to $\gamma=1.25$ returned a subspace embedding.
+%This failure of the CountSketch to accurately preserve rank at higher aspect
+%ratios highlights one deficiency it possesses compared to the other sketches.
+%Put simply
+That is, \textit{CountSketch is more sensitive to higher aspect ratios and
+requires a higher sampling factor in this regime compared to the other
+sketching methods.}
+However, given that the sketches are designed for particularly tall and skinny
+matrices, one could argue that CountSketch's weaker reliability above
+$d/n = 0.375$
+is  not problematic: on all the test instances which fall into the tall-and-
+skinny setup, CountSketch retains rank with comparable distortion.
+
+\noindent
+\textit{Accuracy and Dimensionality Results: real data.}
+On real datasets we see similar behaviour.
+CountSketch performs well when the aspect ratio is particularly small
+but less reliably preserves rank as the aspect ratio increases.
+For all but the highest aspect ratio datasets
+there is a $\gamma$ such that sampling with at least this value
+provides a subspace embedding.
+For the highest aspect ratio datasets (Slice ($d/n = 7 \times 10^{-3}$),
+ Complex ($d/n=1.2 \times 10^{-1}$),and w1a ($d/n = 1.2 \times
+ 10^{-1}$)), no method consistently finds a subspace embedding.
+For tall-and-skinny datasets, CountSketch typically returns an
+embedding at the same sampling factor as \SRHT,
+and with distortion that differs by at most a small amount:  $10^{-2}$
+in the worst case (California Housing, w3a), but more often on the order of $10^{-3}$.
+This is apparent as we step through the w$n$a datasets;
+neither method returns a full rank embedding for w$1$a beyond
+ a certain sampling factor.
+While both methods return a full rank embedding for w$3$a at $\gamma=5$,
+ the w$4$a data requires $\gamma = 5$ for the CountSketch and $\gamma = 1$
+ for \SRHT: this is the greatest disparity between the two methods and occurs
+ at $d/n = 4.1 \times 10^{-2}$.
+
+
+The theoretical analysis indicates that CountSketch should have a
+linear dependence on the reciprocal failure probabilty ($1/\delta$),
+compared to logarithmic for other methods.
+Nevertheless, we do not see this clearly reflected in the empirical
+behavior.
+The largest aspect ratio for which the CountSketch behaves almost identically
+ to \SRHT is $d/n = 3 \times 10^{-2}$: less than this and we see only small
+ differences in the distortion of the embedding.
+As a result, given the huge time saving, in the regime when
+$d/n < 3 \times 10^{-2}$, the CountSketch seems preferable
+since rank is retained at relatively low sampling factors.
+If we are \textit{solely} interested in finding a subspace embedding for
+slightly `fatter' data, along with less time constraints, then \SRHT is
+ favourable.
+
+\eat{
+Despite this, in the iterative framework a rank-deficient `embedding' can
+suffice, since directions that are missed in one iteration can be
+found in later iterations.
+Hence, CountSketch appears to be a good choice, due to its speed and
+low distortion even when rank is lost.}
+
+\medskip
+\noindent
+\textbf{Summary.}
+We conclude  by returning to our original motivating questions.
+We first observed that the CountSketch embedding scaled with the density of the
+ data but this growth was mild enough that for all aspect ratios tested it was
+ a factor of 10 faster than the SRHT (which also scaled consistently with the
+ theory).
+ Second, for a variety of real datasets we saw settings of the
+ sampling factor $\gamma$ that ensure a subspace embedding is
+ returned, and have shown examples when a `small' sampling factor is not sufficient.
+Third, on the data we have tested, we have shown that there are examples
+ when the CountSketch requires a larger embedding dimension to obtain a subspace
+ embedding compared to \SRHT.
+ However, this is only a small constant factor
+ larger for CountSketch despite the theoretical analysis requiring a factor $d$ more.
+ In addition, we saw empirically that there is a threshold below
+ which the performance of the CountSketch is almost identical (in that rank is
+ preserved and distortion is only a small constant factor different) to the \SRHT
+ but is vastly cheaper to compute.
+ Finally, for the aspect ratios tested we have also found thresholds at which
+ rank is preserved or lost which will serve as a guide for Section
+ \ref{sec: ihs-rank-deficient}.
