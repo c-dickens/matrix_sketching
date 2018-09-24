@@ -150,7 +150,9 @@ def main():
 
     x_cvx = cvxopt_lasso(X,y,lasso_penalty_term)
     print()
-    #np.testing.assert_array_almost_equal(x_cvx, x_opt,5)
+    np.testing.assert_array_almost_equal(x_cvx, x_opt,5)
+    print("QP formulation agrees with Sklearn √√√")
+
 
     x0 = np.zeros((d,))
     for i in range(20):
@@ -161,7 +163,8 @@ def main():
         #print(np.c_[new_x[:,None], x_opt[:,None]])
         x0 = new_x
 
-    print(np.c_[x0[:,None], x_opt[:,None]])
+    np.testing.assert_array_almost_equal(x0, x_opt, 6)
+    print("Iterative scheme agrees with the the QP formulation √√√")
 
 
 

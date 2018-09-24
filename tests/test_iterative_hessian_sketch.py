@@ -169,9 +169,9 @@ class TestSketch(unittest.TestCase):
         print(80*"-")
         print("TESTING LASSO ITERATIVE HESSIAN SKETCH ALGORITHM")
 
-        ncols = 3
-        nrows = 1000
-        sketch_size = 1000
+        ncols = 10
+        nrows = 10000
+        sketch_size = 10*ncols
         sklearn_lasso_bound = 10
         trials = 5
         lasso_time = 0
@@ -197,7 +197,7 @@ class TestSketch(unittest.TestCase):
         for sketch_method in sketch_names:
             ihs_lasso = IHS(data=X, targets=y, sketch_dimension=sketch_size,
                                                     sketch_type=sketch_method,
-                                                    number_iterations=10,
+                                                    number_iterations=15,
                                                     data_rows=rows,data_cols=cols,data_vals=vals,
                                                     random_state=random_seed)
             print("STARTING IHS-LASSO ALGORITHM WITH {}".format(sketch_method), 60*"*")
@@ -212,7 +212,7 @@ class TestSketch(unittest.TestCase):
             print("||x^* - x'||_A^2: {}".format((np.linalg.norm(X@(x_opt - x_ihs)**2/X.shape[0]))))
 
             # Test convergence
-            np.testing.assert_array_almost_equal(x_opt, x_ihs, decimal=4)
+            np.testing.assert_array_almost_equal(x_opt, x_ihs, decimal=3)
             print("SOLUTION IS CORRECT")
 
 
