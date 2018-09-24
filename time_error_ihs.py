@@ -37,6 +37,7 @@ def error_vs_time(n,d,sampling_factors,trials,times):
     times2test = times
 
 
+
     print("Generating  data")
     X,y,x_star = my_lasso_data(n,d)
     X = normalize(X)
@@ -68,50 +69,67 @@ def error_vs_time(n,d,sampling_factors,trials,times):
     for sketch_method in ihs_sketches:
         for gamma in sampling_factors:
             sketch_size = np.int(gamma*d)
+            solution_error_for_iter_check = 1.0  # to check whether the error is small
+                                                 # enough to break out of the loop.
+
             for time in times2test:
-
-                total_error2opt       = 0
-                total_error2truth     = 0
-                total_sol_error       = 0
-                total_objective_error = 0
-                total_iters_used      = 0
-
-                print("IHS-LASSO ALGORITHM on ({},{}) WITH {}, gamma {}".format(n,d,sketch_method, gamma), 60*"*")
+                print("-"*80)
                 print("Testing time: {}".format(time))
-                funct_dict = {'time_to_run' : time, 'problem' : "lasso", 'bound' : sklearn_lasso_bound}
-                for _trial in range(trials):
-                    shuffled_ids = np.random.permutation(n)
-                    X_train, y_train = X[shuffled_ids,:], y[shuffled_ids]
-                    sparse_X_train = sparse_data[shuffled_ids,:]
-                    sparse_X_train = sparse_X_train.tocoo()
-                    rows, cols, vals = sparse_X_train.row, sparse_X_train.col, sparse_X_train.data
-                    ihs_lasso = ihs.IHS(data=X_train, targets=y_train, sketch_dimension=sketch_size,
-                                        sketch_type=sketch_method,
-                                        number_iterations=10,
-                                        data_rows=rows,data_cols=cols,data_vals=vals)
+                print("int-log-error: {}".format(np.int(solution_error_for_iter_check)))
+                if np.int(solution_error_for_iter_check) == -16:
+                    # continuing for longer doesn't gain anything so just use
+                    # previous results.
+                    time_results[sketch_method][gamma][time] = {"error to opt" : total_error2opt,
+                                                         "solution error" : total_sol_error,
+                                                         "num iterations" : total_iters_used}
+                    print("Already converged before time {} seconds so continuing.".format(time))
+
+                else:
+
+                    total_error2opt       = 0
+                    total_error2truth     = 0
+                    total_sol_error       = 0
+                    total_objective_error = 0
+                    total_iters_used      = 0
+
+                    print("IHS-LASSO ALGORITHM on ({},{}) WITH {}, gamma {}".format(n,d,sketch_method, gamma))
+                    funct_dict = {'time_to_run' : time, 'problem' : "lasso", 'bound' : sklearn_lasso_bound}
+                    for _trial in range(trials):
+                        shuffled_ids = np.random.permutation(n)
+                        X_train, y_train = X[shuffled_ids,:], y[shuffled_ids]
+                        sparse_X_train = sparse_data[shuffled_ids,:]
+                        sparse_X_train = sparse_X_train.tocoo()
+                        rows, cols, vals = sparse_X_train.row, sparse_X_train.col, sparse_X_train.data
+                        ihs_lasso = ihs.IHS(data=X_train, targets=y_train, sketch_dimension=sketch_size,
+                                            sketch_type=sketch_method,
+                                            number_iterations=10,
+                                            data_rows=rows,data_cols=cols,data_vals=vals)
 
 
-                    #x_ihs,_, _, _, iters_used = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound},timing=True)
-                    x_ihs,iters_used = ihs_lasso.solve_for_time(**funct_dict)
+                        #x_ihs,_, _, _, iters_used = ihs_lasso.fast_solve({'problem' : "lasso", 'bound' : sklearn_lasso_bound},timing=True)
+                        x_ihs,iters_used = ihs_lasso.solve_for_time(**funct_dict)
 
-                    # Update dict output values
-                    error2opt = prediction_error(X,x_opt,x_ihs)**2
-                    solution_error = (1/n)*np.linalg.norm(x_ihs - x_opt)**2
+                        # Update dict output values
+                        error2opt = prediction_error(X,x_opt,x_ihs)**2
+                        solution_error = (1/n)*np.linalg.norm(x_ihs - x_opt)**2
 
-                    # Update counts
-                    total_error2opt += error2opt
-                    total_sol_error += solution_error
-                    total_iters_used += iters_used
+                        # Update counts
+                        total_error2opt += error2opt
+                        total_sol_error += solution_error
+                        total_iters_used += iters_used
 
-                total_error2opt /= trials
-                total_sol_error /= trials
-                total_iters_used /= trials
-
-                print("Mean ||x^* - x'||^2: {}".format(total_sol_error))
-                print("Mean number of {} iterations used".format(total_iters_used))
-                time_results[sketch_method][gamma][time] = {"error to opt" : total_error2opt,
-                                                     "solution error" : total_sol_error,
-                                                     "num iterations" : total_iters_used}
+                    total_error2opt /= trials
+                    total_sol_error /= trials
+                    total_iters_used /= trials
+                    print("Mean log||x^* - x'||_A^2: {}".format(np.log10(total_error2opt)))
+                    print("Mean log||x^* - x'||^2: {}".format(total_sol_error))
+                    print("Mean number of {} iterations used".format(total_iters_used))
+                    time_results[sketch_method][gamma][time] = {"error to opt" : total_error2opt,
+                                                         "solution error" : total_sol_error,
+                                                         "num iterations" : np.ceil(total_iters_used)}
+                    # Bookkeeping - if the error is at 10E-16 don't do another iteration.
+                    solution_error_for_iter_check = np.log10(total_error2opt)
+                    print("New sol_error_iters: {}".format(solution_error_for_iter_check))
 
     pretty = PrettyPrinter(indent=4)
     pretty.pprint(time_results)
@@ -138,7 +156,7 @@ def main():
     n_trials = time_error_ihs_grid['num trials']
     time_range = time_error_ihs_grid['times']
     # for n,d in itertools.product(time_error_ihs_grid['rows'],time_error_ihs_grid['columns']):
-    for n,d in itertools.product([50_000],[50]):
+    for n,d in itertools.product([10_000],[10]):
         print("Testing n={}, d={}".format(n,d))
         error_vs_time(n,d,sampling_factors,n_trials, time_range)
 
