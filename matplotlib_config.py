@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 # # Use latex font.
 # # rc(‘font’, **{‘family’: ‘serif’, ‘serif’: [‘Computer Modern’]})
 # # rc(‘text’, usetex=True)
-
+sklearn_colour = "C1"
 my_markers = ['.', 's', '^', 'D', 'x', '+', 'V', 'o', '*']
 col_markers = {param_grid['columns'][i]: my_markers[i] for i in range(len(param_grid['columns']))}
 
