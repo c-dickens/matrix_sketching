@@ -118,22 +118,30 @@ def iterative_lasso(sketch_data, data, targets, x0, penalty):
 
     res = cp.solvers.qp(P,q,G,h)
     w = np.squeeze(np.array(res['x']))
-    #w[w < 1E-8] = 0
+    w[w < 1E-8] = 0
     x = w[:d] - w[d:]
     return(x)
 
 
 
 def main():
-    rawdata_mat = np.load('../data/Complex.npy')
+    rawdata_mat = np.load('../data/california_housing_train.npy')
+    # X = rawdata_mat[:,:-1]
+    # y = rawdata_mat[:,-1]
+    scaler = StandardScaler()
+    X = scaler.fit_transform(rawdata_mat[:,:-1])
+    y = rawdata_mat[:,-1]
 
-    n = 50000
-    d = 15
-    X,y,x_star = generate_data(n,d,5)
+    n,d = X.shape
+    # n = 50000
+    # d = 15
+    # X,y,x_star = generate_data(n,d,5)
     repeats = 1
 
     # solve the lasso problem in sklearn
-    lasso_penalty_term = 5.0
+    x_LS = np.linalg.lstsq(X,y)[0]
+
+    lasso_penalty_term = 25000000.0
     lassoModel = Lasso(alpha=lasso_penalty_term ,max_iter=1000)
     sklearn_X, sklearn_y = np.sqrt(n)*X, np.sqrt(n)*y
     sklearn_time = np.zeros(repeats)
@@ -149,8 +157,8 @@ def main():
     print("-"*80)
 
     x_cvx = cvxopt_lasso(X,y,lasso_penalty_term)
-    print()
-    np.testing.assert_array_almost_equal(x_cvx, x_opt,5)
+    #np.testing.assert_array_almost_equal(x_cvx, x_opt,5)
+    print("||x_cvx - x_opt||^2 = {}".format( (1/n)*np.linalg.norm(x_cvx-x_opt)**2) )
     print("QP formulation agrees with Sklearn √√√")
 
 
@@ -158,12 +166,15 @@ def main():
     for i in range(20):
         S_X = (1/np.sqrt(10*d))*np.random.randn(10*d,n)@X
         new_x = iterative_lasso(S_X,X,y,x0,lasso_penalty_term)
-        sol_error = np.log((1/n)*np.linalg.norm(new_x-x_opt)**2)
+        sol_error = np.log((1/n)*np.linalg.norm(new_x-x_cvx)**2)
         print("Error after {} iters to opt: {}".format(i+1,sol_error))
         #print(np.c_[new_x[:,None], x_opt[:,None]])
         x0 = new_x
-
-    np.testing.assert_array_almost_equal(x0, x_opt, 6)
+    sol_error =  (1/n)*np.linalg.norm(X@(x0-x_cvx))**2
+    print(np.linalg.norm(x0-x_opt)**2)
+    print("||x_opt - x_ihs||^2 = {}".format(np.log(sol_error)))
+    print(np.c_[x_LS[:,None], x_opt[:,None],x_cvx[:,None], x0[:,None]])
+    #np.testing.assert_array_almost_equal(x0, x_opt, 6)
     print("Iterative scheme agrees with the the QP formulation √√√")
 
 
